@@ -644,7 +644,7 @@ HRESULT __stdcall DDRAWSURFACE4_HOOK_Unlock(LPVOID *ppvOut, LPRECT lpRect) {
 	HRESULT ret = ofn(ppvOut, lpRect);
 	LogDXError(ret);
 
-	if(g_binkActive == TRUE && g_config.displaymode != 0) { //&& (LPVOID)ppvOut == (LPVOID)0x002c7c50
+	if(g_binkActive == TRUE && g_config.displaymode != 0) {
 		DDSURFACEDESC2 ddsd2;
 		memset(&ddsd2, 0, sizeof(DDSURFACEDESC2));
 		ddsd2.dwSize = sizeof(ddsd2);
