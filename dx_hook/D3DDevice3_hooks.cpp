@@ -606,6 +606,25 @@ HRESULT __stdcall D3DDEVICE3_HOOK_DrawIndexedPrimitive(LPVOID *ppvOut, D3DPRIMIT
 	if(g_config.displaymode != 0) {
 		typedef struct { float x, y, z, rhw; DWORD t1, t2, t3, t4; } _FF8VERTEX;
 		_FF8VERTEX *vert = (_FF8VERTEX *)lpvVertices;
+		if(d3dptPrimitiveType == D3DPT_LINELIST)
+		{
+			// Draw extra lines to make them thick enough
+			// Only works for horizontal lines, I've yet to see others
+			bool any = true;
+			while(any) {
+				any = false;
+				for(DWORD j = 0; j < dwVertexCount; j++) {
+					int oy = vert[j].y / g_game.modY;
+					int ny = (vert[j].y + 1) / g_game.modY;
+					if (oy == ny) {
+						vert[j].y += 1;
+						any = true;
+					}
+				}
+				if(any)
+					ret = ofn(ppvOut, d3dptPrimitiveType, dwVertexTypeDesc, lpvVertices, dwVertexCount, lpwIndices, dwIndexCount, dwFlags);
+			}
+		}
 
 		//Log("vert[0] = {x=%.10f, y=%.10f, z=%.10f, rhw=%.3f, t1=%d, t2=%d, t3=%d, t4=%d\n", vert[0].x, vert[0].y, vert[0].z, vert[0].rhw, vert[0].t1, vert[0].t2, vert[0].t3, vert[0].t4 );
 		//Log("vert[1] = {x=%.10f, y=%.10f, z=%.10f, rhw=%.3f, t1=%d, t2=%d, t3=%d, t4=%d\n", vert[1].x, vert[1].y, vert[1].z, vert[0].rhw, vert[1].t1, vert[1].t2, vert[1].t3, vert[1].t4 );
