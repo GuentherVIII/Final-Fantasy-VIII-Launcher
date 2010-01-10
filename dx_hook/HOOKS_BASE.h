@@ -76,7 +76,9 @@ public:
 };
 
 extern BOOL g_binkActive;
-extern UINT g_binkInactiveClearCount;
+extern BOOL g_binkSurfaceNeedsStretch;
+extern LPVOID g_lastLockedSurface;
+extern LPVOID g_lastLockedSurfaceData;
 extern LPVOID g_binkCpySurface;
 extern LPVOID g_binkStruct;
 extern CVIEWPORT g_currentviewport;

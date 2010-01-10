@@ -20,6 +20,91 @@ along with Final Fantasy VII Launcher.  If not, see <http://www.gnu.org/licenses
 
 #include "dllmain.h"
 
+typedef HRESULT (__stdcall *DirectDrawCreate_Type)(GUID FAR *, LPDIRECTDRAW FAR *, IUnknown FAR *);
+typedef HRESULT (__stdcall *DirectInputCreateA_Type)(HINSTANCE, DWORD, LPDIRECTINPUT *, LPUNKNOWN);
+typedef void *(__stdcall *BinkOpen_Type)(HANDLE, UINT32);
+typedef void (__stdcall *BinkClose_Type)(void *);
+typedef int (__stdcall *BinkCopyToBuffer_Type)(void *, void *, int, int, int, int, int);
+
+extern SDLLHook *DLLHooks[];
+
+HRESULT __stdcall MyDirectDrawCreate(GUID FAR *lpGUID, LPDIRECTDRAW FAR *lplpDD, IUnknown FAR *pUnkOuter ) {
+	DirectDrawCreate_Type OldFn = (DirectDrawCreate_Type)DLLHooks[0]->Functions[0].OrigFn;
+	HRESULT ret = OldFn(lpGUID, lplpDD, pUnkOuter);
+
+	Log("_EXPORT::DirectDrawCreate()\n");
+	if(ret == S_OK && ishooked_ddraw_hooks == false) {
+		HookVTBLCalls((LPVOID *)lplpDD, ddraw_hooks, count_ddraw_hooks, "IDirectDraw");
+		ishooked_ddraw_hooks = true;
+	}
+
+	return ret;
+}
+
+HRESULT __stdcall MyDirectInputCreateA(HINSTANCE hinst, DWORD dwVersion, LPDIRECTINPUT *lplpDirectInput, LPUNKNOWN pUnkOuter) {
+	DirectInputCreateA_Type OldFn = (DirectInputCreateA_Type)DLLHooks[1]->Functions[0].OrigFn;
+	HRESULT ret = OldFn(hinst, dwVersion, lplpDirectInput, pUnkOuter);
+
+	Log("_EXPORT::DirectInputCreateA(hinst=%#010lx, dwVersion=%#010lx, lplpDirectInput=%#010lx *[%#010lx], pUnkOuter=%#010lx)\n", hinst, dwVersion, lplpDirectInput, (lplpDirectInput != NULL ? *lplpDirectInput : NULL), pUnkOuter);
+	if(ret == S_OK && ishooked_dinput_hooks == false) {
+		HookVTBLCalls((LPVOID *)lplpDirectInput, dinput_hooks, count_dinput_hooks, "IDirectInput");
+		ishooked_dinput_hooks = true;
+	}
+
+	return ret;
+}
+
+ void * __stdcall MyBinkOpen(HANDLE BinkFile, UINT32 Flags) {
+	BinkOpen_Type OldFn = (BinkOpen_Type)DLLHooks[2]->Functions[0].OrigFn;
+	void *ret = OldFn(BinkFile, Flags);
+
+	/*if(ret != NULL) {
+		_Log("Flags: %#010lx", Flags);
+		for(int i = 0; i < 20; i++) _Log("%d: %#010lx", i, *(((LPDWORD)ret)+i));
+	}*/
+
+	g_binkActive = TRUE;
+	g_binkStruct = ret;
+
+	Log("_EXPORT::BinkOpen(%p, %p) = %p\n", BinkFile, Flags, ret);
+
+	return ret;
+}
+
+void __stdcall MyBinkClose(void *BinkStruct) {
+	g_binkActive = FALSE;
+	g_binkStruct = NULL;
+
+	BinkClose_Type OldFn = (BinkClose_Type)DLLHooks[2]->Functions[1].OrigFn;
+	OldFn(BinkStruct);
+	if(g_binkCpySurface != NULL) {
+		((LPDIRECTDRAWSURFACE4)g_binkCpySurface)->Release();
+		g_binkCpySurface = NULL;
+	}
+
+	Log("_EXPORT::BinkClose(%p)\n", BinkStruct);
+
+	return;
+}
+
+/* mostly guesses */
+int __stdcall MyBinkCopyToBuffer(void *BinkStruct, void *surface, int pitch, int height, int a, int b, int c) {
+
+	BinkCopyToBuffer_Type OldFn = (BinkCopyToBuffer_Type)DLLHooks[2]->Functions[2].OrigFn;
+	int r = OldFn(BinkStruct, surface, pitch, height, a, b, c);
+	
+/* FF8 uses BinkCopyToBuffer to copy the video into a locked DDrawSurface. The surface is locked just before and unlocked just after,
+so that just stretching the surface that is unlocked directly after this call would suffice. This check is for safety.
+Don't stretch the surface here, but let DDraw do a hardware blit on the unlocked surface. */
+	if (g_lastLockedSurfaceData == surface)
+		g_binkSurfaceNeedsStretch = true;
+
+	Log("_EXPORT::BinkCopyToBuffer(%#010lx, %#010lx, %#010lx, %#010lx, %#010lx, %#010lx, %#010lx)=%p\n", BinkStruct, surface, pitch, height, a, b, c, r);
+
+	return r;
+}
+
+
 HINSTANCE hinstance = NULL;
 
 SDLLHook D3DHook = {
@@ -42,6 +127,7 @@ SDLLHook Binkw32Hook = {
 	{
 		{ "_BinkOpen@8", (PDWORD)MyBinkOpen },
 		{ "_BinkClose@4", (PDWORD)MyBinkClose },
+		{ "_BinkCopyToBuffer@28", (PDWORD)MyBinkCopyToBuffer },
 		{ NULL, NULL }
 	}
 };
@@ -106,67 +192,6 @@ BOOL APIENTRY DllMain(HINSTANCE hModule,  DWORD  ul_reason_for_call, LPVOID lpRe
 	}
 	return TRUE;
 }
-
-HRESULT __stdcall MyDirectDrawCreate(GUID FAR *lpGUID, LPDIRECTDRAW FAR *lplpDD, IUnknown FAR *pUnkOuter ) {
-	DirectDrawCreate_Type OldFn = (DirectDrawCreate_Type)DLLHooks[0]->Functions[0].OrigFn;
-	HRESULT ret = OldFn(lpGUID, lplpDD, pUnkOuter);
-
-	Log("_EXPORT::DirectDrawCreate()\n");
-	if(ret == S_OK && ishooked_ddraw_hooks == false) {
-		HookVTBLCalls((LPVOID *)lplpDD, ddraw_hooks, count_ddraw_hooks, "IDirectDraw");
-		ishooked_ddraw_hooks = true;
-	}
-
-	return ret;
-}
-
-HRESULT __stdcall MyDirectInputCreateA(HINSTANCE hinst, DWORD dwVersion, LPDIRECTINPUT *lplpDirectInput, LPUNKNOWN pUnkOuter) {
-	DirectInputCreateA_Type OldFn = (DirectInputCreateA_Type)DLLHooks[1]->Functions[0].OrigFn;
-	HRESULT ret = OldFn(hinst, dwVersion, lplpDirectInput, pUnkOuter);
-
-	Log("_EXPORT::DirectInputCreateA(hinst=%#010lx, dwVersion=%#010lx, lplpDirectInput=%#010lx *[%#010lx], pUnkOuter=%#010lx)\n", hinst, dwVersion, lplpDirectInput, (lplpDirectInput != NULL ? *lplpDirectInput : NULL), pUnkOuter);
-	if(ret == S_OK && ishooked_dinput_hooks == false) {
-		HookVTBLCalls((LPVOID *)lplpDirectInput, dinput_hooks, count_dinput_hooks, "IDirectInput");
-		ishooked_dinput_hooks = true;
-	}
-
-	return ret;
-}
-
- void * __stdcall MyBinkOpen(HANDLE BinkFile, UINT32 Flags) {
-	BinkOpen_Type OldFn = (BinkOpen_Type)DLLHooks[2]->Functions[0].OrigFn;
-	void *ret = OldFn(BinkFile, Flags);
-
-	/*if(ret != NULL) {
-		_Log("Flags: %#010lx", Flags);
-		for(int i = 0; i < 20; i++) _Log("%d: %#010lx", i, *(((LPDWORD)ret)+i));
-	}*/
-
-	g_binkActive = TRUE;
-	g_binkStruct = ret;
-
-	Log("_EXPORT::BinkOpen()\n");
-
-	return ret;
-}
-
-void __stdcall MyBinkClose(void *BinkStruct) {
-	g_binkActive = FALSE;
-	g_binkStruct = NULL;
-
-	BinkClose_Type OldFn = (BinkClose_Type)DLLHooks[2]->Functions[1].OrigFn;
-	OldFn(BinkStruct);
-	g_binkInactiveClearCount = 0;
-	if(g_binkCpySurface != NULL) {
-		((LPDIRECTDRAWSURFACE4)g_binkCpySurface)->Release();
-		g_binkCpySurface = NULL;
-	}
-
-	Log("_EXPORT::BinkClose()\n");
-
-	return;
-}
-
 
 /*
 //__declspec(dllexport) LRESULT CALLBACK hookproc(int ncode,WPARAM wparam,LPARAM lparam)

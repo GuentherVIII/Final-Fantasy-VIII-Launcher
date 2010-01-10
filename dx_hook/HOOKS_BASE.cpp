@@ -21,7 +21,9 @@ along with Final Fantasy VII Launcher.  If not, see <http://www.gnu.org/licenses
 #include "HOOKS_BASE.h"
 
 BOOL g_binkActive = FALSE;
-UINT g_binkInactiveClearCount = 1;
+BOOL g_binkSurfaceNeedsStretch;
+LPVOID g_lastLockedSurface;
+LPVOID g_lastLockedSurfaceData;
 LPVOID g_binkCpySurface = NULL;
 LPVOID g_binkStruct = NULL;
 CVIEWPORT g_currentviewport = { 0, 0, 0, 0, 0, 0, 0, 0 };

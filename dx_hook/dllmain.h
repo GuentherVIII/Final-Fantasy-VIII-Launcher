@@ -32,13 +32,4 @@ along with Final Fantasy VII Launcher.  If not, see <http://www.gnu.org/licenses
 #include "DInput_hooks.h"
 #include "HOOKS_BASE.h"
 
-typedef HRESULT (__stdcall *DirectDrawCreate_Type)(GUID FAR *, LPDIRECTDRAW FAR *, IUnknown FAR *);
-HRESULT __stdcall MyDirectDrawCreate(GUID FAR *lpGUID, LPDIRECTDRAW FAR *lplpDD, IUnknown FAR *pUnkOuter);
-typedef HRESULT (__stdcall *DirectInputCreateA_Type)(HINSTANCE, DWORD, LPDIRECTINPUT *, LPUNKNOWN);
-HRESULT __stdcall MyDirectInputCreateA(HINSTANCE, DWORD, LPDIRECTINPUT *, LPUNKNOWN);
-typedef void *(__stdcall *BinkOpen_Type)(HANDLE, UINT32);
-void * WINAPI MyBinkOpen(HANDLE, UINT32);
-typedef void (__stdcall *BinkClose_Type)(void *);
-void __stdcall MyBinkClose(void *);
-
 #endif

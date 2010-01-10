@@ -97,7 +97,7 @@ SVTBL_HOOK ddrawsurface4_hooks[] = {
 /*22*/	{ NULL, 0, NULL, NULL },	//{ "GetSurfaceDesc",			0x58, NULL, (PDWORD)DDRAWSURFACE4_HOOK_GetSurfaceDesc },
 /*23*/	{ NULL, 0, NULL, NULL },	//{ "Initialize",				0x5C, NULL, (PDWORD)DDRAWSURFACE4_HOOK_Initialize },
 /*24*/	{ NULL, 0, NULL, NULL },	//{ "IsLost",					0x60, NULL, (PDWORD)DDRAWSURFACE4_HOOK_IsLost },
-/*25*/	{ NULL, 0, NULL, NULL },	//{ "Lock",					0x64, NULL, (PDWORD)DDRAWSURFACE4_HOOK_Lock },
+/*25*/	{ "Lock",					0x64, NULL, (PDWORD)DDRAWSURFACE4_HOOK_Lock },
 /*26*/	{ NULL, 0, NULL, NULL },	//{ "ReleaseDC",				0x68, NULL, (PDWORD)DDRAWSURFACE4_HOOK_ReleaseDC },
 /*27*/	{ NULL, 0, NULL, NULL },	//{ "Restore",				0x6C, NULL, (PDWORD)DDRAWSURFACE4_HOOK_Restore },
 /*28*/	{ NULL, 0, NULL, NULL },	//{ "SetClipper",				0x70, NULL, (PDWORD)DDRAWSURFACE4_HOOK_SetClipper },
@@ -531,6 +531,9 @@ HRESULT __stdcall DDRAWSURFACE4_HOOK_Lock(LPVOID *ppvOut, LPRECT lpDestRect, LPD
 
 	Log("IDirectDrawSurface4::%s(this=%#010lx, lpDestRect=%#010lx { left=%d, right=%d, top=%d, bottom=%d }, lpDDSurfaceDesc=%#010lx, dwFlags=%#010lx, hEvent=%#010lx)\n", ddrawsurface4_hooks[hpos].name, ppvOut, lpDestRect, (lpDestRect != NULL ? lpDestRect->left : NULL), (lpDestRect != NULL ? lpDestRect->right : NULL), (lpDestRect != NULL ? lpDestRect->top : NULL), (lpDestRect != NULL ? lpDestRect->bottom : NULL), lpDDSurfaceDesc, dwFlags, hEvent);
 	if(lpDDSurfaceDesc != NULL) {
+		g_lastLockedSurface = ppvOut;
+		g_lastLockedSurfaceData = lpDDSurfaceDesc->lpSurface;
+		g_binkSurfaceNeedsStretch = false;
 		char dwFlags_buffer[LOGBUFFER_MAX], ddscaps1_buffer[LOGBUFFER_MAX], ddpf_buffer[LOGBUFFER_MAX];
 		FlagsToString(FLAGS_DDSD, CFLAGS_DDSD, lpDDSurfaceDesc->dwFlags, (char *)&dwFlags_buffer, LOGBUFFER_MAX);
 		FlagsToString(FLAGS_DDSCAPS1, CFLAGS_DDSCAPS1, lpDDSurfaceDesc->ddsCaps.dwCaps, (char *)&ddscaps1_buffer, LOGBUFFER_MAX);
@@ -646,7 +649,8 @@ HRESULT __stdcall DDRAWSURFACE4_HOOK_Unlock(LPVOID *ppvOut, LPRECT lpRect) {
 		memset(&ddsd2, 0, sizeof(DDSURFACEDESC2));
 		ddsd2.dwSize = sizeof(ddsd2);
 		((IDirectDrawSurface4 *)ppvOut)->GetSurfaceDesc(&ddsd2);
-		if(ddsd2.dwWidth == displaymode_options[g_config.displaymode].resX && ddsd2.dwHeight == displaymode_options[g_config.displaymode].resY && (ddsd2.ddsCaps.dwCaps & DDSCAPS_BACKBUFFER) == DDSCAPS_BACKBUFFER) {
+		if(ddsd2.dwWidth == displaymode_options[g_config.displaymode].resX && ddsd2.dwHeight == displaymode_options[g_config.displaymode].resY
+			&& g_lastLockedSurface == ppvOut && g_binkSurfaceNeedsStretch) {
 			Log("Bink Active: Rescaling video surface...\n");
 			RECT rcDest, rcSource;
 			rcSource.top = g_currentviewport.old_y; rcSource.bottom = 480-g_currentviewport.old_y;
