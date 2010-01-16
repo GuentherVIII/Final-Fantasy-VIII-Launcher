@@ -491,62 +491,62 @@ HRESULT __stdcall D3DDEVICE3_HOOK_DrawIndexedPrimitive(LPVOID *ppvOut, D3DPRIMIT
 			//Log("Mod=%f, OffsetX=%f, OffsetY=%f", g_game.mod, offsetX, offsetY);
 			//Log("g_currentviewport { x=%f, y=%f, old_x=%f, old_y=%f }\n", g_currentviewport.x, g_currentviewport.y, g_currentviewport.old_x, g_currentviewport.old_y);
 
-			float b_adjX = 0, b_adjY = 0;
+			float adjX = 0, adjY = 0;
 			if(g_config.stretch_4_3_ar == 0) { 
-				b_adjX = b_adjY = (g_config.expert_mode >= 1 ? g_config.tex_uvmap_adj_backgrounds : 0.0005f);
+				adjX = adjY = (g_config.expert_mode >= 1 ? g_config.tex_uvmap_adj_backgrounds : 0.0005f);
 			} else {
-				b_adjX = (g_config.expert_mode >= 1 ? g_config.tex_uvmap_adj_backgrounds : 0.0005f)*(g_game.modX > g_game.modY ? 1+g_game.modX-g_game.modY : 1);
-				b_adjY = (g_config.expert_mode >= 1 ? g_config.tex_uvmap_adj_backgrounds : 0.0005f)*(g_game.modX < g_game.modY ? 1+g_game.modY-g_game.modX : 1);
+				adjX = (g_config.expert_mode >= 1 ? g_config.tex_uvmap_adj_backgrounds : 0.0005f)*(g_game.modX > g_game.modY ? 1+g_game.modX-g_game.modY : 1);
+				adjY = (g_config.expert_mode >= 1 ? g_config.tex_uvmap_adj_backgrounds : 0.0005f)*(g_game.modX < g_game.modY ? 1+g_game.modY-g_game.modX : 1);
 			}
 
-			float i_adjX = 0, i_adjY = 0;
-			if(g_config.stretch_4_3_ar == 0) { 
-				i_adjX = i_adjY = (g_config.expert_mode >= 1 ? g_config.tex_uvmap_adj_interface : 0.0005f);
-			} else {
-				i_adjX = (g_config.expert_mode >= 1 ? g_config.tex_uvmap_adj_interface : 0.0005f)*(g_game.modX > g_game.modY ? 1+g_game.modX-g_game.modY : 1);
-				i_adjY = (g_config.expert_mode >= 1 ? g_config.tex_uvmap_adj_interface : 0.0005f)*(g_game.modX < g_game.modY ? 1+g_game.modY-g_game.modX : 1);
+			// Interface blits have rhw==0, and profit from a different amount of adjustment
+			if(g_config.stretch_4_3_ar == 0 && vert[0].rhw == 1.0f) { 
+				adjX = adjY = (g_config.expert_mode >= 1 ? g_config.tex_uvmap_adj_interface : 0.0005f);
+			} else if (vert[0].rhw == 1.0f){
+				adjX = (g_config.expert_mode >= 1 ? g_config.tex_uvmap_adj_interface : 0.0005f)*(g_game.modX > g_game.modY ? 1+g_game.modX-g_game.modY : 1);
+				adjY = (g_config.expert_mode >= 1 ? g_config.tex_uvmap_adj_interface : 0.0005f)*(g_game.modX < g_game.modY ? 1+g_game.modY-g_game.modX : 1);
+			}
+
+			// FF8 blits backgrounds, fonts, the squaresoft logo, etc. by blitting rects.
+			// Each rect has 4 vertices, which are used by two triangles.
+			// instead of deducing the rects from the indices, use this knowledge to simplify things
+			// Compare every vertex in each rect with every other, and adjust the uv coordinates
+			// to form a slightly smaller rect.
+			if(dwVertexCount%4 == 0 && vert[0].z == vert[1].z && vert[0].z == vert[2].z && vert[0].z == vert[3].z) {
+				for (unsigned int i = 0; i < dwIndexCount; ++i) {
+					Log("%d", lpwIndices[i]);
+				}
+				for(DWORD i = 0; i < dwVertexCount; i += 4) {
+					for (unsigned int j = i; j < i + 3; ++j) {
+						for (unsigned int k = j + 1; k < i + 4; ++k) {
+							if (vert[j].u == vert[k].u && vert[j].v < vert[k].v) {
+								vert[j].v += adjX;
+								vert[k].v -= adjX;
+							}
+							if (vert[j].u == vert[k].u && vert[j].v > vert[k].v) {
+								vert[j].v -= adjX;
+								vert[k].v += adjX;
+							}
+						}
+					}
+				}
+				for(DWORD i = 0; i < dwVertexCount; i += 4) {
+					for (unsigned int j = i; j < i + 3; ++j) {
+						for (unsigned int k = j + 1; k < i + 4; ++k) {
+							if (vert[j].v == vert[k].v && vert[j].u < vert[k].u) {
+								vert[j].u += adjX;
+								vert[k].u -= adjX;
+							}
+							if (vert[j].v == vert[k].v && vert[j].u > vert[k].u) {
+								vert[j].u -= adjX;
+								vert[k].u += adjX;
+							}
+						}
+					}
+				}
 			}
 
 			for(DWORD i = 0; i < dwVertexCount; i++) {
-				//dwVertexCount%4 == 0: array of squares [x,y / x2,y / x,y2 / x2,y2] with 16x16px texture coords [u2-u=16 / v2-v=16] (the makeup off background textures)
-				//vert[i].rhw != 1.0f: exclude interface textures
-				//vert[i].z == vert[i+1].z && vert[i].z == vert[i+2].z && vert[i].z == vert[i+3].z: !TEMP! excludes most 3d textures (change if possible) //DOES NOT WORK
-				if(dwVertexCount%4 == 0 && vert[i].rhw != 1.0f) { // && vert[i].z == vert[i+1].z && vert[i].z == vert[i+2].z && vert[i].z == vert[i+3].z
-					//const float adj = 0.0015f; //adv. 0x0001f in 1280x960+
-					if(i%4 == 0) {
-						vert[i].u += b_adjX;
-						vert[i].v += b_adjY;
-					} else if(i%4 == 1) {
-						vert[i].u -= b_adjX;
-						vert[i].v += b_adjY;
-					} else if(i%4 == 2) {
-						vert[i].u += b_adjX;
-						vert[i].v -= b_adjY;
-					} else {
-						vert[i].u -= b_adjX;
-						vert[i].v -= b_adjY;
-					}
-				}
-
-				//dwVertexCount%4 == 0: array of squares [x,y / x,y2 / x2,y / x2,y2] with 16x16px texture coords [u2-u=16 / v2-v=16] (the makeup off interface textures) !NOTE! the order of vertices is different from a background texture array
-				//vert[i].rhw == 1.0f: exclusively interface textures
-				if(dwVertexCount%4 == 0 && vert[i].rhw == 1.0f) {
-					//const float adj = 0.0015f;
-					if(i%4 == 0) {
-						vert[i].u += i_adjX;
-						vert[i].v += i_adjY;
-					} else if(i%4 == 1) {
-						vert[i].u += i_adjX;
-						vert[i].v -= i_adjY;
-					} else if(i%4 == 2) {
-						vert[i].u -= i_adjX;
-						vert[i].v += i_adjY;
-					} else {
-						vert[i].u -= i_adjX;
-						vert[i].v -= i_adjY;
-					}
-				}
-
 				float pt[2] = { vert[i].x, vert[i].y };
 				/*if(vert[i].rhw == 1.0f) {
 					for(UINT n = 0; n < 2; n++) {
@@ -584,10 +584,6 @@ HRESULT __stdcall D3DDEVICE3_HOOK_DrawIndexedPrimitive(LPVOID *ppvOut, D3DPRIMIT
 					vert[i].y  = pt[1]*g_game.modY+offsetY;
 				}
 				Log("vert[%d] = {x=%.10f, y=%.10f, z=%.10f, rhw=%.10f, diffuse=%#010lx, specular=%#010lx, u=%.10f, v=%.10f\n", i, vert[i].x, vert[i].y, vert[i].z, vert[i].rhw, vert[i].diffuse, vert[i].specular, vert[i].u, vert[i].v );
-				//if(vert[i].u == 0.0f) vert[i].u = 1.0f/256.0f;
-				//if(vert[i].u == 1.0f) vert[i].u = 1.0f-(1.0f/256.0f);
-				//if(vert[i].v == 0.0f) vert[i].v = 1.0f/256.0f;
-				//if(vert[i].v == 1.0f) vert[i].v = 1.0f-(1.0f/256.0f);
 				
 				if(g_debugoptions.tex_uvmap_notextures == true) {
 					//toggle tex_uvmap_notextures
