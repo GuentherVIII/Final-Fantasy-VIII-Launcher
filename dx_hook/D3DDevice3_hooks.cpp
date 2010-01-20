@@ -513,6 +513,21 @@ HRESULT __stdcall D3DDEVICE3_HOOK_DrawIndexedPrimitive(LPVOID *ppvOut, D3DPRIMIT
 			// Compare every vertex in each rect with every other, and adjust the uv coordinates
 			// to form a slightly smaller rect.
 			if(dwVertexCount%4 == 0 && vert[0].z == vert[1].z && vert[0].z == vert[2].z && vert[0].z == vert[3].z) {
+				LPDIRECT3DTEXTURE2 lpTexture;
+				((IDirect3DDevice3 *)ppvOut)->GetTexture(0, &lpTexture); 
+				if (g_config.force_texture_filtering && lpTexture) {
+					IDirectDrawSurface4 * p;
+					lpTexture->QueryInterface(IID_IDirectDrawSurface4, (void**)&p);
+					DDSURFACEDESC2 ddsd2;
+					memset(&ddsd2, 0, sizeof(DDSURFACEDESC2));
+					ddsd2.dwSize = sizeof(ddsd2);
+					p->GetSurfaceDesc(&ddsd2);
+					D3DTEXTUREMAGFILTER mf;
+					D3DTEXTUREFILTER f;
+					if (~ddsd2.dwFlags & DDSD_CKSRCBLT) {
+						((IDirect3DDevice3 *)ppvOut)->SetRenderState(D3DRENDERSTATE_TEXTUREMAG, D3DFILTER_LINEAR);
+					}
+				}
 				for (unsigned int i = 0; i < dwIndexCount; ++i) {
 					Log("%d", lpwIndices[i]);
 				}
@@ -846,17 +861,32 @@ HRESULT __stdcall D3DDEVICE3_HOOK_SetTexture(LPVOID *ppvOut, DWORD dwStage, LPDI
 
 	D3DDEVICE3_SetTexture_Type ofn = (D3DDEVICE3_SetTexture_Type)d3ddevice3_hooks[hpos].oldFunc;
 	HRESULT ret = ofn(ppvOut, dwStage, lpTexture);
-	LogDXError(ret);
+	LogDXError(ret);/*
 	if (g_config.force_texture_filtering && lpTexture) {
+		IDirectDrawSurface4 * p;
+		lpTexture->QueryInterface(IID_IDirectDrawSurface4, (void**)&p);
+		DDSURFACEDESC2 ddsd2;
+		memset(&ddsd2, 0, sizeof(DDSURFACEDESC2));
+		ddsd2.dwSize = sizeof(ddsd2);
+		p->GetSurfaceDesc(&ddsd2);
+		D3DTEXTUREMAGFILTER mf;
+		D3DTEXTUREFILTER f;
+		if (ddsd2.dwFlags & DDSD_CKSRCBLT) {
+			mf = D3DTFG_POINT;
+			f = D3DFILTER_NEAREST;
+		} else {
+			mf = D3DTFG_LINEAR;
+			f = D3DFILTER_LINEAR;
+		}
 		DWORD val;
 		((IDirect3DDevice3 *)ppvOut)->GetTextureStageState(dwStage, D3DTSS_MAGFILTER, &val);
-		((IDirect3DDevice3 *)ppvOut)->SetTextureStageState(dwStage, D3DTSS_MAGFILTER, D3DTFG_LINEAR);
+		((IDirect3DDevice3 *)ppvOut)->SetTextureStageState(dwStage, D3DTSS_MAGFILTER, mf);
 		((IDirect3DDevice3 *)ppvOut)->GetTextureStageState(dwStage, D3DTSS_MAGFILTER, &val);
 		((IDirect3DDevice3 *)ppvOut)->GetRenderState(D3DRENDERSTATE_TEXTUREMAG, &val);
-		((IDirect3DDevice3 *)ppvOut)->SetRenderState(D3DRENDERSTATE_TEXTUREMAG, D3DFILTER_LINEAR);
+		((IDirect3DDevice3 *)ppvOut)->SetRenderState(D3DRENDERSTATE_TEXTUREMAG, f);
 		((IDirect3DDevice3 *)ppvOut)->GetRenderState(D3DRENDERSTATE_TEXTUREMAG, &val);
 		//((IDirect3DDevice3 *)ppvOut)->SetTextureStageState(dwStage, D3DTSS_MINFILTER, D3DTFN_LINEAR);
-	}
+	}*/
 
 	Log("IDirect3DDevice3::%s(this=%#010lx, dwStage=%#010lx, lpTexture=%#010lx)\n", d3ddevice3_hooks[hpos].name, ppvOut, dwStage, lpTexture);
 
