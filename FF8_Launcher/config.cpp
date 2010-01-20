@@ -80,6 +80,9 @@ int LoadConfig(FF8Config &cfg) {
 				//8-bit Paletted Textures
 				} else if(_tcscmp(_T("8bit_paletted_textures_fix"), buffer) == 0) {
 					cfg.b8_paletted_textures_fix = parseInt(val);
+				//Force Linear Texture Filtering
+				} else if(_tcscmp(_T("force_texture_filtering"), buffer) == 0) {
+					cfg.force_texture_filtering = parseInt(val);
 				//Stretch 4:3 Aspect Ratio
 				} else if(_tcscmp(_T("stretch_4:3_ar"), buffer) == 0) {
 					cfg.stretch_4_3_ar = parseInt(val);
@@ -108,6 +111,7 @@ int SaveConfig(FF8Config &cfg) {
 		ofs << "displaymode=" << cfg.displaymode << "\n";
 		ofs << "fsaa=" << cfg.fsaa << "\n";
 		ofs << "8bit_paletted_textures_fix=" << cfg.b8_paletted_textures_fix << "\n";
+		ofs << "force_texture_filtering=" << cfg.force_texture_filtering << "\n";
 		ofs << "stretch_4:3_ar=" << cfg.stretch_4_3_ar << "\n";
 		ofs << "expert_mode=" << cfg.expert_mode << "\n";
 		ofs << "expert_tex_uvmap_adj_backgrounds=" << cfg.tex_uvmap_adj_backgrounds << "\n";

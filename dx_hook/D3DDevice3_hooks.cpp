@@ -106,7 +106,7 @@ SVTBL_HOOK d3ddevice3_hooks[] = {
 /*35*/	{ NULL, 0, NULL, NULL },	//{ "DrawIndexedPrimitiveVB",		0x8C, NULL, (PDWORD)D3DDEVICE3_HOOK_DrawIndexedPrimitiveVB },
 /*36*/	{ NULL, 0, NULL, NULL },	//{ "ComputeSphereVisibility",	0x90, NULL, (PDWORD)D3DDEVICE3_HOOK_ComputeSphereVisibility },
 /*37*/	{ NULL, 0, NULL, NULL },	//{ "GetTexture",					0x94, NULL, (PDWORD)D3DDEVICE3_HOOK_GetTexture },
-/*38*/	{ NULL, 0, NULL, NULL },	//{ "SetTexture",					0x98, NULL, (PDWORD)D3DDEVICE3_HOOK_SetTexture },
+/*38*/	{ "SetTexture",					0x98, NULL, (PDWORD)D3DDEVICE3_HOOK_SetTexture },
 /*39*/	{ NULL, 0, NULL, NULL },	//{ "GetTextureStageState",		0x9C, NULL, (PDWORD)D3DDEVICE3_HOOK_GetTextureStageState },
 /*40*/	{ NULL, 0, NULL, NULL },	//{ "SetTextureStageState",		0xA0, NULL, (PDWORD)D3DDEVICE3_HOOK_SetTextureStageState },
 /*41*/	{ NULL, 0, NULL, NULL },	//{ "ValidateDevice",				0xA4, NULL, (PDWORD)D3DDEVICE3_HOOK_ValidateDevice }
@@ -372,7 +372,7 @@ HRESULT __stdcall D3DDEVICE3_HOOK_GetRenderState(LPVOID *ppvOut, D3DRENDERSTATET
 	HRESULT ret = ofn(ppvOut, dwRenderStateType, lpdwRenderState);
 	LogDXError(ret);
 
-	Log("IDirect3DDevice3::%s(this=%#010lx, dwRenderStateType=%#010lx (%d), lpdwRenderState=%#010lx)\n", d3ddevice3_hooks[hpos].name, ppvOut, dwRenderStateType, dwRenderStateType, lpdwRenderState);
+	Log("IDirect3DDevice3::%s(this=%#010lx, dwRenderStateType=%#010lx (%d), lpdwRenderState=%#010lx *[%#010lx])\n", d3ddevice3_hooks[hpos].name, ppvOut, dwRenderStateType, dwRenderStateType, lpdwRenderState, lpdwRenderState ? *lpdwRenderState : 0);
 
 	return ret;
 }
@@ -610,8 +610,8 @@ HRESULT __stdcall D3DDEVICE3_HOOK_DrawIndexedPrimitive(LPVOID *ppvOut, D3DPRIMIT
 			while(any) {
 				any = false;
 				for(DWORD j = 0; j < dwVertexCount; j++) {
-					int oy = vert[j].y / g_game.modY;
-					int ny = (vert[j].y + 1) / g_game.modY;
+					int oy = int(vert[j].y / g_game.modY);
+					int ny = int((vert[j].y + 1) / g_game.modY);
 					if (oy == ny) {
 						vert[j].y += 1;
 						any = true;
@@ -847,6 +847,16 @@ HRESULT __stdcall D3DDEVICE3_HOOK_SetTexture(LPVOID *ppvOut, DWORD dwStage, LPDI
 	D3DDEVICE3_SetTexture_Type ofn = (D3DDEVICE3_SetTexture_Type)d3ddevice3_hooks[hpos].oldFunc;
 	HRESULT ret = ofn(ppvOut, dwStage, lpTexture);
 	LogDXError(ret);
+	if (g_config.force_texture_filtering && lpTexture) {
+		DWORD val;
+		((IDirect3DDevice3 *)ppvOut)->GetTextureStageState(dwStage, D3DTSS_MAGFILTER, &val);
+		((IDirect3DDevice3 *)ppvOut)->SetTextureStageState(dwStage, D3DTSS_MAGFILTER, D3DTFG_LINEAR);
+		((IDirect3DDevice3 *)ppvOut)->GetTextureStageState(dwStage, D3DTSS_MAGFILTER, &val);
+		((IDirect3DDevice3 *)ppvOut)->GetRenderState(D3DRENDERSTATE_TEXTUREMAG, &val);
+		((IDirect3DDevice3 *)ppvOut)->SetRenderState(D3DRENDERSTATE_TEXTUREMAG, D3DFILTER_LINEAR);
+		((IDirect3DDevice3 *)ppvOut)->GetRenderState(D3DRENDERSTATE_TEXTUREMAG, &val);
+		//((IDirect3DDevice3 *)ppvOut)->SetTextureStageState(dwStage, D3DTSS_MINFILTER, D3DTFN_LINEAR);
+	}
 
 	Log("IDirect3DDevice3::%s(this=%#010lx, dwStage=%#010lx, lpTexture=%#010lx)\n", d3ddevice3_hooks[hpos].name, ppvOut, dwStage, lpTexture);
 
@@ -860,7 +870,7 @@ HRESULT __stdcall D3DDEVICE3_HOOK_GetTextureStageState(LPVOID *ppvOut, DWORD dwS
 	HRESULT ret = ofn(ppvOut, dwStage, dwState, lpdwValue);
 	LogDXError(ret);
 
-	Log("IDirect3DDevice3::%s()\n", d3ddevice3_hooks[hpos].name);
+	Log("IDirect3DDevice3::%s(this=%#010lx, dwStage=%#010lx, dwState=%#010lx, lpdwValue=%#010lx *[%#010lx])\n", d3ddevice3_hooks[hpos].name, ppvOut, dwStage, dwState, lpdwValue, lpdwValue ? *lpdwValue : 0);
 
 	return ret;
 }
@@ -872,7 +882,7 @@ HRESULT __stdcall D3DDEVICE3_HOOK_SetTextureStageState(LPVOID *ppvOut, DWORD dwS
 	HRESULT ret = ofn(ppvOut, dwStage, dwState, dwValue);
 	LogDXError(ret);
 
-	Log("IDirect3DDevice3::%s()\n", d3ddevice3_hooks[hpos].name);
+	Log("IDirect3DDevice3::%s(this=%#010lx, dwStage=%#010lx, dwState=%#010lx, dwValue=%#010lx)\n", d3ddevice3_hooks[hpos].name, ppvOut, dwStage, dwState, dwValue);
 
 	return ret;
 }

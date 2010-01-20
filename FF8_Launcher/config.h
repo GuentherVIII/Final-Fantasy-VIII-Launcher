@@ -34,6 +34,7 @@ struct FF8Config {
 	UINT displaymode;
 	UINT fsaa;
 	UINT b8_paletted_textures_fix;
+	UINT force_texture_filtering;
 	UINT expert_mode;
 	float tex_uvmap_adj_backgrounds;
 	float tex_uvmap_adj_interface;
