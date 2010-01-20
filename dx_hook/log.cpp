@@ -35,7 +35,7 @@ int _Log(const char *Format, ...) {
 			logFile->open(LOGFILE, std::ios::app);
 		}
 
-		*logFile << logBuffer << "\n";
+		*logFile << logBuffer << std::endl;
 	}
 
 	return 0;
