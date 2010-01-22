@@ -153,6 +153,9 @@ LRESULT CALLBACK InterfaceProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lP
 		HWND hwndStretch43Ar = GetDlgItem(g_hwndInterface, IDC_STRETCH43AR);
 		Button_SetCheck(hwndStretch43Ar, (g_config.stretch_4_3_ar == 1 ? BST_CHECKED : BST_UNCHECKED));
 
+		HWND hwndLinearFilter = GetDlgItem(g_hwndInterface, IDC_LFILTER);
+		Button_SetCheck(hwndLinearFilter, (g_config.force_texture_filtering == 1 ? BST_CHECKED : BST_UNCHECKED));
+
 		HWND hwndExpertMode = GetDlgItem(g_hwndInterface, IDC_EXPERTMODE);
 		Button_SetCheck(hwndExpertMode, (g_config.expert_mode == 1 ? BST_CHECKED : BST_UNCHECKED));
 		
@@ -187,6 +190,13 @@ LRESULT CALLBACK InterfaceProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lP
 		case IDC_STRETCH43AR:
 			if(Button_GetCheck(GetDlgItem(g_hwndInterface, IDC_STRETCH43AR)) == BST_CHECKED) g_config.stretch_4_3_ar = 1;
 			else  g_config.stretch_4_3_ar = 0;
+			SaveConfig(g_config);
+			
+			return TRUE;
+
+		case IDC_LFILTER:
+			if(Button_GetCheck(GetDlgItem(g_hwndInterface, IDC_LFILTER)) == BST_CHECKED) g_config.force_texture_filtering = 1;
+			else  g_config.force_texture_filtering = 0;
 			SaveConfig(g_config);
 			
 			return TRUE;

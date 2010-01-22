@@ -10,6 +10,7 @@
 #define IDC_DDDISPLAYMODE               1001
 #define IDC_DDFSAA                      1002
 #define IDC_BTPLAY                      1006
+#define IDC_LFILTER                     1007
 #define IDC_8BITPFIX                    1008
 #define IDOK_ABOUT                      1009
 #define IDC_STRETCH43AR                 1009
