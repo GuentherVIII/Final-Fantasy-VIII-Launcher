@@ -21,10 +21,7 @@ along with Final Fantasy VII Launcher.  If not, see <http://www.gnu.org/licenses
 #include "HOOKS_BASE.h"
 
 BOOL g_binkActive = FALSE;
-BOOL g_binkSurfaceNeedsStretch;
-LPVOID g_lastLockedSurface;
-LPVOID g_lastLockedSurfaceData;
-LPVOID g_binkCpySurface = NULL;
+LPDIRECTDRAWSURFACE4 g_decoyBackBuffer;
 LPVOID g_binkStruct = NULL;
 CVIEWPORT g_currentviewport = { 0, 0, 0, 0, 0, 0, 0, 0 };
 std::map<LPVOID, LPVOID> textures;

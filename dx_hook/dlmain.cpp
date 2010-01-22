@@ -77,10 +77,6 @@ void __stdcall MyBinkClose(void *BinkStruct) {
 
 	BinkClose_Type OldFn = (BinkClose_Type)DLLHooks[2]->Functions[1].OrigFn;
 	OldFn(BinkStruct);
-	if(g_binkCpySurface != NULL) {
-		((LPDIRECTDRAWSURFACE4)g_binkCpySurface)->Release();
-		g_binkCpySurface = NULL;
-	}
 
 	Log("_EXPORT::BinkClose(%p)\n", BinkStruct);
 
@@ -92,12 +88,6 @@ int __stdcall MyBinkCopyToBuffer(void *BinkStruct, void *surface, int pitch, int
 
 	BinkCopyToBuffer_Type OldFn = (BinkCopyToBuffer_Type)DLLHooks[2]->Functions[2].OrigFn;
 	int r = OldFn(BinkStruct, surface, pitch, height, a, b, c);
-	
-/* FF8 uses BinkCopyToBuffer to copy the video into a locked DDrawSurface. The surface is locked just before and unlocked just after,
-so that just stretching the surface that is unlocked directly after this call would suffice. This check is for safety.
-Don't stretch the surface here, but let DDraw do a hardware blit on the unlocked surface. */
-	if (g_lastLockedSurfaceData == surface)
-		g_binkSurfaceNeedsStretch = true;
 
 	Log("_EXPORT::BinkCopyToBuffer(%#010lx, %#010lx, %#010lx, %#010lx, %#010lx, %#010lx, %#010lx)=%p\n", BinkStruct, surface, pitch, height, a, b, c, r);
 

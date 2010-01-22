@@ -525,15 +525,54 @@ HRESULT __stdcall DDRAWSURFACE4_HOOK_IsLost(LPVOID *ppvOut) {
 HRESULT __stdcall DDRAWSURFACE4_HOOK_Lock(LPVOID *ppvOut, LPRECT lpDestRect, LPDDSURFACEDESC2 lpDDSurfaceDesc, DWORD dwFlags, HANDLE hEvent) {
 	const unsigned int hpos = 25;
 
+	// If the game is locking the backbuffer, it can do arbitrary stuff in there,
+	// which this wrapper has no chance of making scaled properly.
+	// So the game is given a surface with the dimension it expects, and the wrapper will
+	// scale it up in the UnLock function.
+	// Luckily, this appears to be only used for videos, where simple upscaling is the only option anyway.
+	if (g_config.displaymode && lpDDSurfaceDesc) {
+		((IDirectDrawSurface4 *)ppvOut)->GetSurfaceDesc(lpDDSurfaceDesc);
+		if(lpDDSurfaceDesc->dwWidth == displaymode_options[g_config.displaymode].resX &&
+		   lpDDSurfaceDesc->dwHeight == displaymode_options[g_config.displaymode].resY &&
+		   (lpDDSurfaceDesc->ddsCaps.dwCaps & DDSCAPS_BACKBUFFER)) {
+			Log("Backbuffer locking: substitute decoy surface\n");
+			DDSURFACEDESC2 ddsd;
+			memset(&ddsd, 0, sizeof(DDSURFACEDESC2));
+			ddsd.dwSize = sizeof(ddsd);
+			if(g_decoyBackBuffer == NULL) {
+				LPDIRECTDRAW4 lpDD = NULL;
+				ddsd.dwFlags = DDSD_CAPS | DDSD_WIDTH | DDSD_HEIGHT;
+				ddsd.dwWidth = 640;
+				ddsd.dwHeight = 480;
+				ddsd.ddsCaps.dwCaps = DDSCAPS_3DDEVICE | DDSCAPS_OFFSCREENPLAIN;
+					((IDirectDrawSurface4 *)ppvOut)->GetDDInterface((LPVOID *)&lpDD);
+				lpDD->CreateSurface(&ddsd, &g_decoyBackBuffer, NULL);
+					SAFE_RELEASE(lpDD);
+			}
+			if(g_decoyBackBuffer->IsLost())
+				g_decoyBackBuffer->Restore();
+			RECT rcDest, rcSource;
+			rcSource.top = (lpDDSurfaceDesc->dwHeight - g_game.height)/2; rcSource.bottom = lpDDSurfaceDesc->dwHeight - rcSource.top;
+			rcSource.left = (lpDDSurfaceDesc->dwWidth - g_game.width)/2; rcSource.right = lpDDSurfaceDesc->dwWidth - rcSource.left;
+			rcDest.top = 0; rcDest.bottom = 480;
+			rcDest.left = 0; rcDest.right = 640;
+			g_decoyBackBuffer->Blt(&rcDest, (IDirectDrawSurface4 *)ppvOut, &rcSource, DDBLT_WAIT, NULL);
+			HRESULT ret = g_decoyBackBuffer->Lock(0, &ddsd, DDLOCK_NOSYSLOCK | DDLOCK_WAIT, 0);
+			lpDDSurfaceDesc->dwWidth = ddsd.dwWidth;
+			lpDDSurfaceDesc->dwHeight = ddsd.dwHeight;
+			lpDDSurfaceDesc->lPitch = ddsd.lPitch;
+			lpDDSurfaceDesc->lpSurface = ddsd.lpSurface;
+			return ret;
+		}
+	}
+
 	DDRAWSURFACE4_Lock_Type ofn = (DDRAWSURFACE4_Lock_Type)ddrawsurface4_hooks[hpos].oldFunc;
 	HRESULT ret = ofn(ppvOut, lpDestRect, lpDDSurfaceDesc, dwFlags, hEvent);
 	LogDXError(ret);
 
 	Log("IDirectDrawSurface4::%s(this=%#010lx, lpDestRect=%#010lx { left=%d, right=%d, top=%d, bottom=%d }, lpDDSurfaceDesc=%#010lx, dwFlags=%#010lx, hEvent=%#010lx)\n", ddrawsurface4_hooks[hpos].name, ppvOut, lpDestRect, (lpDestRect != NULL ? lpDestRect->left : NULL), (lpDestRect != NULL ? lpDestRect->right : NULL), (lpDestRect != NULL ? lpDestRect->top : NULL), (lpDestRect != NULL ? lpDestRect->bottom : NULL), lpDDSurfaceDesc, dwFlags, hEvent);
+	
 	if(lpDDSurfaceDesc != NULL) {
-		g_lastLockedSurface = ppvOut;
-		g_lastLockedSurfaceData = lpDDSurfaceDesc->lpSurface;
-		g_binkSurfaceNeedsStretch = false;
 		char dwFlags_buffer[LOGBUFFER_MAX], ddscaps1_buffer[LOGBUFFER_MAX], ddpf_buffer[LOGBUFFER_MAX];
 		FlagsToString(FLAGS_DDSD, CFLAGS_DDSD, lpDDSurfaceDesc->dwFlags, (char *)&dwFlags_buffer, LOGBUFFER_MAX);
 		FlagsToString(FLAGS_DDSCAPS1, CFLAGS_DDSCAPS1, lpDDSurfaceDesc->ddsCaps.dwCaps, (char *)&ddscaps1_buffer, LOGBUFFER_MAX);
@@ -640,86 +679,30 @@ HRESULT __stdcall DDRAWSURFACE4_HOOK_SetPalette(LPVOID *ppvOut, LPDIRECTDRAWPALE
 HRESULT __stdcall DDRAWSURFACE4_HOOK_Unlock(LPVOID *ppvOut, LPRECT lpRect) {
 	const unsigned int hpos = 32;
 
+	if(g_config.displaymode) {
+		DDSURFACEDESC2 sd;
+		memset(&sd, 0, sizeof(DDSURFACEDESC2));
+		sd.dwSize = sizeof(sd);
+		((IDirectDrawSurface4 *)ppvOut)->GetSurfaceDesc(&sd);
+		if(sd.dwWidth == displaymode_options[g_config.displaymode].resX &&
+		   sd.dwHeight == displaymode_options[g_config.displaymode].resY &&
+		   (sd.ddsCaps.dwCaps & DDSCAPS_BACKBUFFER)) {
+			Log("Backbuffer unlocking: Rescaling surface... (hopefully with a Bink video)\n");
+			RECT rcDest, rcSource;
+			rcSource.top = 0; rcSource.bottom = 480;
+			rcSource.left = 0; rcSource.right = 640;
+			rcDest.top = (sd.dwHeight - g_game.height) / 2; rcDest.bottom = sd.dwHeight - rcDest.top;
+			rcDest.left = (sd.dwWidth - g_game.width) / 2; rcDest.right = sd.dwWidth - rcDest.left;
+
+			HRESULT ret = g_decoyBackBuffer->Unlock(0);
+			((IDirectDrawSurface4 *)ppvOut)->Blt(&rcDest, g_decoyBackBuffer, &rcSource, DDBLT_WAIT, NULL);
+			return ret;
+		}
+	}
+
 	DDRAWSURFACE4_Unlock_Type ofn = (DDRAWSURFACE4_Unlock_Type)ddrawsurface4_hooks[hpos].oldFunc;
 	HRESULT ret = ofn(ppvOut, lpRect);
 	LogDXError(ret);
-
-	if(g_binkActive == TRUE && g_config.displaymode != 0) {
-		DDSURFACEDESC2 ddsd2;
-		memset(&ddsd2, 0, sizeof(DDSURFACEDESC2));
-		ddsd2.dwSize = sizeof(ddsd2);
-		((IDirectDrawSurface4 *)ppvOut)->GetSurfaceDesc(&ddsd2);
-		if(ddsd2.dwWidth == displaymode_options[g_config.displaymode].resX && ddsd2.dwHeight == displaymode_options[g_config.displaymode].resY
-			&& g_lastLockedSurface == ppvOut && g_binkSurfaceNeedsStretch) {
-			Log("Bink Active: Rescaling video surface...\n");
-			RECT rcDest, rcSource;
-			rcSource.top = g_currentviewport.old_y; rcSource.bottom = 480-g_currentviewport.old_y;
-			rcSource.left = g_currentviewport.old_x; rcSource.right = 640-g_currentviewport.old_x;
-			rcDest.top = g_currentviewport.y; rcDest.bottom = displaymode_options[g_config.displaymode].resY-g_currentviewport.y;
-			rcDest.left = g_currentviewport.x; rcDest.right = displaymode_options[g_config.displaymode].resX-g_currentviewport.x;		
-
-			if(g_binkCpySurface == NULL) {
-				LPDIRECTDRAW4 lpDD = NULL;
-				//LPDIRECTDRAWSURFACE4 lpDDS = NULL;
-				DDSURFACEDESC2 ddsd;
-				memset(&ddsd, 0, sizeof(DDSURFACEDESC2));
-				ddsd.dwSize = sizeof(ddsd);
-				ddsd.dwFlags = DDSD_CAPS | DDSD_WIDTH | DDSD_HEIGHT;
-				ddsd.dwWidth = ddsd2.dwWidth;
-				ddsd.dwHeight = ddsd2.dwHeight;
-				ddsd.ddsCaps.dwCaps = DDSCAPS_3DDEVICE | DDSCAPS_OFFSCREENPLAIN;
-
-				((IDirectDrawSurface4 *)ppvOut)->GetDDInterface((LPVOID *)&lpDD);
-				lpDD->CreateSurface(&ddsd, (LPDIRECTDRAWSURFACE4 *)&g_binkCpySurface, NULL);
-
-				SAFE_RELEASE(lpDD);
-			}
-
-			((IDirectDrawSurface4 *)g_binkCpySurface)->Blt(&rcDest, (IDirectDrawSurface4 *)ppvOut, &rcSource, DDBLT_WAIT, NULL);
-
-			if(g_d3ddevice != NULL) {
-				LPDIRECT3DVIEWPORT3 lpVP = NULL;
-				D3DVIEWPORT2 d3dvp_old, d3dvp_new;
-				D3DRECT rect[4];
-				memset(&rect, 0, sizeof(rect));
-				memset(&d3dvp_old, 0, sizeof(d3dvp_old));
-				d3dvp_old.dwSize = sizeof(d3dvp_old);
-
-				((LPDIRECT3DDEVICE3)g_d3ddevice)->GetCurrentViewport(&lpVP);
-				lpVP->GetViewport2(&d3dvp_old);
-
-				memcpy(&d3dvp_new, &d3dvp_old, sizeof(d3dvp_new));
-				d3dvp_new.dwX = d3dvp_new.dwY = 0;
-				d3dvp_new.dwWidth = displaymode_options[g_config.displaymode].resX;
-				d3dvp_new.dwHeight = displaymode_options[g_config.displaymode].resY;
-
-				d3dvp_new.dwSize = 0; //special case for internal call
-				d3dvp_old.dwSize = 0;
-				
-				lpVP->SetViewport2(&d3dvp_new);
-
-				SetD3DRect(rect[0], 0, displaymode_options[g_config.displaymode].resX, 0, g_currentviewport.y);
-				SetD3DRect(rect[1], 0, displaymode_options[g_config.displaymode].resX, g_currentviewport.y+g_game.height, displaymode_options[g_config.displaymode].resY);
-				SetD3DRect(rect[2], 0, g_currentviewport.x, 0, displaymode_options[g_config.displaymode].resY);
-				SetD3DRect(rect[3], g_currentviewport.x+g_game.width, displaymode_options[g_config.displaymode].resX, 0, displaymode_options[g_config.displaymode].resY);
-
-
-				lpVP->Clear2(4, (LPD3DRECT)&rect, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, 0x00000000, 0, 0);
-				lpVP->SetViewport2(&d3dvp_old);
-			}
-
-			/*LPDIRECT3DVIEWPORT3 lpVP = NULL;
-			D3DRECT rect;
-			rect.x1 = rect.lX1 = rect.y1 = rect.lY1 = 0;
-			rect.x2 = rect.lX2 = displaymode_options[g_config.displaymode].resX;
-			rect.y2 = rect.lY2 = displaymode_options[g_config.displaymode].resY;
-
-			((LPDIRECT3DDEVICE3)g_d3ddevice)->GetCurrentViewport(&lpVP);
-			lpVP->Clear2(1, &rect, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, 0x00000000, 0, 0);*/
-
-			((IDirectDrawSurface4 *)ppvOut)->Blt(&rcDest, (IDirectDrawSurface4 *)g_binkCpySurface, &rcDest, DDBLT_WAIT, NULL);
-		}
-	}
 
 	Log("IDirectDrawSurface4::%s(this=%#010lx, lpRect=%#010lx { left=%d, right=%d, top=%d, bottom=%d })\n", ddrawsurface4_hooks[hpos].name, ppvOut, lpRect, (lpRect != NULL ? lpRect->left : NULL), (lpRect != NULL ? lpRect->right : NULL), (lpRect != NULL ? lpRect->top : NULL), (lpRect != NULL ? lpRect->bottom : NULL));
 

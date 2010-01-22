@@ -76,10 +76,7 @@ public:
 };
 
 extern BOOL g_binkActive;
-extern BOOL g_binkSurfaceNeedsStretch;
-extern LPVOID g_lastLockedSurface;
-extern LPVOID g_lastLockedSurfaceData;
-extern LPVOID g_binkCpySurface;
+extern LPDIRECTDRAWSURFACE4 g_decoyBackBuffer;
 extern LPVOID g_binkStruct;
 extern CVIEWPORT g_currentviewport;
 extern std::map<LPVOID, LPVOID> textures;

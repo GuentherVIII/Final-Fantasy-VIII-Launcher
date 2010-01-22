@@ -522,8 +522,6 @@ HRESULT __stdcall D3DDEVICE3_HOOK_DrawIndexedPrimitive(LPVOID *ppvOut, D3DPRIMIT
 					memset(&ddsd2, 0, sizeof(DDSURFACEDESC2));
 					ddsd2.dwSize = sizeof(ddsd2);
 					p->GetSurfaceDesc(&ddsd2);
-					D3DTEXTUREMAGFILTER mf;
-					D3DTEXTUREFILTER f;
 					if (~ddsd2.dwFlags & DDSD_CKSRCBLT) {
 						((IDirect3DDevice3 *)ppvOut)->SetRenderState(D3DRENDERSTATE_TEXTUREMAG, D3DFILTER_LINEAR);
 					}
