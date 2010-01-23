@@ -173,7 +173,7 @@
 		</Configuration>
 		<Configuration
 			Name="Debug (LOG)|Win32"
-			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
+			OutputDirectory="..\..\..\Programme\FINAL FANTASY VIII"
 			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="1"
 			CharacterSet="1"
