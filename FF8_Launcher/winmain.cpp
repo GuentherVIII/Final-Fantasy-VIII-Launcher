@@ -362,7 +362,7 @@ void LaunchGame(LPCSTR lpCmdLine) {
 		si.cb = sizeof(si);
 
 		//Launch ff8.exe
-		if(!CreateProcess(NULL, (LPWSTR)&exe_path, NULL, NULL, FALSE, 0, NULL, NULL /*(LPCWSTR)&dir_path*/, &si, &pi)) {
+		if(!CreateProcess(NULL, (LPWSTR)&exe_path, NULL, NULL, FALSE, CREATE_SUSPENDED, NULL, NULL /*(LPCWSTR)&dir_path*/, &si, &pi)) {
 			_TCHAR mbuffer[255];
 			_sntprintf_s((_TCHAR *)&mbuffer, 150, 150, _T("CreateProcess(FF8.exe) returned an error...\n\nERROR CODE: %d\n"),  GetLastError());
 			MessageBox(NULL, (_TCHAR *)&mbuffer, _T("Final Fantasy VIII Launcher"), MB_OK | MB_ICONERROR);
@@ -390,6 +390,8 @@ void LaunchGame(LPCSTR lpCmdLine) {
 		CloseHandle(hThread);
 		VirtualFreeEx(pi.hProcess, pLibRemote, sizeof(libPath), MEM_RELEASE);
 
+		// now start running the application
+		ResumeThread(pi.hThread);
 
 		//Destroy the application window and wait for the FF8.exe process to return before therminating the launcher process
 		DestroyWindow(g_hwndMain); 
