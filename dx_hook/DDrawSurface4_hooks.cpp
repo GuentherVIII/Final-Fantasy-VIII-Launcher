@@ -135,7 +135,7 @@ HRESULT __stdcall DDRAWSURFACE4_HOOK_QueryInterface(LPVOID *ppvOut, REFIID riid,
 		ishooked_d3dtexture2_hooks = true;
 	}
 	if(ret == S_OK && riid == IID_IDirect3DTexture2) {
-		textures[*ppvObj] = ppvOut;
+		textures[(LPDIRECT3DTEXTURE2)*ppvObj] = (LPDIRECTDRAWSURFACE4)ppvOut;
 		Log("textures[%#010lx] = %#010lx;\n", (DWORD)*ppvObj, (DWORD)ppvOut);
 	}
 
@@ -522,9 +522,12 @@ HRESULT __stdcall DDRAWSURFACE4_HOOK_IsLost(LPVOID *ppvOut) {
 	return ret;
 }
 
+static LPVOID g_lpSurface;
+static LPDIRECTDRAWSURFACE4 g_lockedSurface;
+
 HRESULT __stdcall DDRAWSURFACE4_HOOK_Lock(LPVOID *ppvOut, LPRECT lpDestRect, LPDDSURFACEDESC2 lpDDSurfaceDesc, DWORD dwFlags, HANDLE hEvent) {
 	const unsigned int hpos = 25;
-
+	dwFlags |= DDLOCK_NOSYSLOCK;
 	// If the game is locking the backbuffer, it can do arbitrary stuff in there,
 	// which this wrapper has no chance of making scaled properly.
 	// So the game is given a surface with the dimension it expects, and the wrapper will
@@ -545,9 +548,9 @@ HRESULT __stdcall DDRAWSURFACE4_HOOK_Lock(LPVOID *ppvOut, LPRECT lpDestRect, LPD
 				ddsd.dwWidth = 640;
 				ddsd.dwHeight = 480;
 				ddsd.ddsCaps.dwCaps = DDSCAPS_3DDEVICE | DDSCAPS_OFFSCREENPLAIN;
-					((IDirectDrawSurface4 *)ppvOut)->GetDDInterface((LPVOID *)&lpDD);
+				((IDirectDrawSurface4 *)ppvOut)->GetDDInterface((LPVOID *)&lpDD);
 				lpDD->CreateSurface(&ddsd, &g_decoyBackBuffer, NULL);
-					SAFE_RELEASE(lpDD);
+				SAFE_RELEASE(lpDD);
 			}
 			if(g_decoyBackBuffer->IsLost())
 				g_decoyBackBuffer->Restore();
@@ -599,6 +602,8 @@ HRESULT __stdcall DDRAWSURFACE4_HOOK_Lock(LPVOID *ppvOut, LPRECT lpDestRect, LPD
 			
 			lpDDSurfaceDesc->ddsCaps.dwCaps, ddscaps1_buffer, lpDDSurfaceDesc->ddsCaps.dwCaps2, lpDDSurfaceDesc->ddsCaps.dwCaps3, lpDDSurfaceDesc->ddsCaps.dwCaps4, lpDDSurfaceDesc->dwTextureStage
 		);
+		g_lockedSurface = (LPDIRECTDRAWSURFACE4)ppvOut;
+		g_lpSurface = lpDDSurfaceDesc->lpSurface;
 	}
 
 	return ret;
@@ -697,6 +702,21 @@ HRESULT __stdcall DDRAWSURFACE4_HOOK_Unlock(LPVOID *ppvOut, LPRECT lpRect) {
 			HRESULT ret = g_decoyBackBuffer->Unlock(0);
 			((IDirectDrawSurface4 *)ppvOut)->Blt(&rcDest, g_decoyBackBuffer, &rcSource, DDBLT_WAIT, NULL);
 			return ret;
+		}
+		if(/*(sd.ddpfPixelFormat.dwFlags & DDPF_ALPHAPIXELS) && */(sd.ddpfPixelFormat.dwFlags & DDPF_RGB) && g_lockedSurface == (LPDIRECTDRAWSURFACE4)ppvOut) {
+			/*for(unsigned int y = 0; y < sd.dwHeight - 1; ++y)
+				for(unsigned int x = 0; x < sd.dwWidth; ++x) {
+					char * p = &((char*)g_lpSurface)[y * sd.lPitch + x * sd.ddpfPixelFormat.dwRGBBitCount / 8];
+					if (!((x+y) % 19)) *((DWORD*)p) |= sd.ddpfPixelFormat.dwRGBAlphaBitMask & 0x55555555;
+					if (!((x+y + 5) % 19)) *((DWORD*)p) &= ~(sd.ddpfPixelFormat.dwRGBAlphaBitMask & 0x55555555);
+					if (!((x+y + 10) % 19)) *((DWORD*)p) |= sd.ddpfPixelFormat.dwRGBAlphaBitMask;
+					if (!((x+y + 15) % 19)) *((DWORD*)p) &= ~sd.ddpfPixelFormat.dwRGBAlphaBitMask;
+					if (!((x+y) % 19)) *((DWORD*)p) |= sd.ddpfPixelFormat.dwRBitMask;
+					if (!((x+y + 5) % 19)) *((DWORD*)p) |= sd.ddpfPixelFormat.dwRBitMask;
+					if (!((x+y + 10) % 19)) *((DWORD*)p) |= sd.ddpfPixelFormat.dwRBitMask;
+					if (!((x+y + 15) % 19)) *((DWORD*)p) |= sd.ddpfPixelFormat.dwRBitMask;
+					if (!((x+y) % 39)) *((DWORD*)p) |= sd.ddpfPixelFormat.dwGBitMask;
+				}*/
 		}
 	}
 

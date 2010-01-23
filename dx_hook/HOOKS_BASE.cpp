@@ -24,7 +24,7 @@ BOOL g_binkActive = FALSE;
 LPDIRECTDRAWSURFACE4 g_decoyBackBuffer;
 LPVOID g_binkStruct = NULL;
 CVIEWPORT g_currentviewport = { 0, 0, 0, 0, 0, 0, 0, 0 };
-std::map<LPVOID, LPVOID> textures;
+std::map<LPDIRECT3DTEXTURE2, LPDIRECTDRAWSURFACE4> textures;
 LPVOID g_d3ddevice = NULL;
 GAME g_game;
 DEBUGOPTIONS g_debugoptions = {

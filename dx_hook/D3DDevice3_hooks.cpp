@@ -105,7 +105,7 @@ SVTBL_HOOK d3ddevice3_hooks[] = {
 /*34*/	{ NULL, 0, NULL, NULL },	//{ "DrawPrimitiveVB",			0x88, NULL, (PDWORD)D3DDEVICE3_HOOK_DrawPrimitiveVB },
 /*35*/	{ NULL, 0, NULL, NULL },	//{ "DrawIndexedPrimitiveVB",		0x8C, NULL, (PDWORD)D3DDEVICE3_HOOK_DrawIndexedPrimitiveVB },
 /*36*/	{ NULL, 0, NULL, NULL },	//{ "ComputeSphereVisibility",	0x90, NULL, (PDWORD)D3DDEVICE3_HOOK_ComputeSphereVisibility },
-/*37*/	{ NULL, 0, NULL, NULL },	//{ "GetTexture",					0x94, NULL, (PDWORD)D3DDEVICE3_HOOK_GetTexture },
+/*37*/	{ "GetTexture",					0x94, NULL, (PDWORD)D3DDEVICE3_HOOK_GetTexture },
 /*38*/	{ "SetTexture",					0x98, NULL, (PDWORD)D3DDEVICE3_HOOK_SetTexture },
 /*39*/	{ NULL, 0, NULL, NULL },	//{ "GetTextureStageState",		0x9C, NULL, (PDWORD)D3DDEVICE3_HOOK_GetTextureStageState },
 /*40*/	{ NULL, 0, NULL, NULL },	//{ "SetTextureStageState",		0xA0, NULL, (PDWORD)D3DDEVICE3_HOOK_SetTextureStageState },
@@ -114,6 +114,10 @@ SVTBL_HOOK d3ddevice3_hooks[] = {
 #endif
 const unsigned int count_d3ddevice3_hooks = 42;
 bool ishooked_d3ddevice3_hooks = false;
+
+static LPDIRECT3DTEXTURE2 g_truecolortexture = 0;
+static LPDIRECT3DTEXTURE2 g_gameviewtexture = 0;
+static DWORD g_tct_width = 0, g_tct_height = 0;
 
 HRESULT __stdcall D3DDEVICE3_HOOK_QueryInterface(LPVOID *ppvOut, REFIID riid, LPVOID FAR *ppvObj) {
 	const unsigned int hpos = 0;
@@ -468,6 +472,43 @@ HRESULT __stdcall D3DDEVICE3_HOOK_DrawPrimitive(LPVOID *ppvOut, D3DPRIMITIVETYPE
 HRESULT __stdcall D3DDEVICE3_HOOK_DrawIndexedPrimitive(LPVOID *ppvOut, D3DPRIMITIVETYPE d3dptPrimitiveType, DWORD dwVertexTypeDesc, LPVOID lpvVertices, DWORD dwVertexCount, LPWORD lpwIndices, DWORD dwIndexCount, DWORD dwFlags) {
 	const unsigned int hpos = 29;
 
+	bool forced_alpha_blend = false;
+	LPDIRECT3DTEXTURE2 lpTexture = 0;
+	((IDirect3DDevice3 *)ppvOut)->GetTexture(0, &lpTexture);
+	DDSURFACEDESC2 ddsd2;
+	memset(&ddsd2, 0, sizeof(DDSURFACEDESC2));
+	ddsd2.dwSize = sizeof(ddsd2);
+	if(lpTexture) {
+		IDirectDrawSurface4 * p;
+		p = textures[lpTexture];
+		p->GetSurfaceDesc(&ddsd2);
+		if (ddsd2.dwFlags & DDSD_CKSRCBLT) {
+			D3DBLEND srcblend;
+			((IDirect3DDevice3 *)ppvOut)->GetRenderState(D3DRENDERSTATE_SRCBLEND, (LPDWORD)&srcblend);
+			D3DBLEND destblend;
+			((IDirect3DDevice3 *)ppvOut)->GetRenderState(D3DRENDERSTATE_DESTBLEND, (LPDWORD)&destblend);
+			DWORD alphaenabled;
+			((IDirect3DDevice3 *)ppvOut)->GetRenderState(D3DRENDERSTATE_ALPHABLENDENABLE, &alphaenabled);
+			DWORD ckenabled;
+			((IDirect3DDevice3 *)ppvOut)->GetRenderState(D3DRENDERSTATE_COLORKEYENABLE, &ckenabled);
+			Log("got (%d == D3DBLEND_ONE) == %d, (%d == D3DBLEND_ZERO) == %d, %d, %d", srcblend, (srcblend == D3DBLEND_ONE), destblend, (destblend == D3DBLEND_ZERO), alphaenabled, ckenabled);
+			if (!alphaenabled && ckenabled && srcblend == D3DBLEND_ONE && destblend == D3DBLEND_ZERO) {
+				Log("forcing alphablending\n");
+				IDirect3DDevice3 * pD3DD = ((IDirect3DDevice3 *)ppvOut);
+				pD3DD->SetRenderState(D3DRENDERSTATE_ALPHABLENDENABLE, TRUE);
+
+				pD3DD->SetRenderState(D3DRENDERSTATE_ALPHATESTENABLE, TRUE);
+				pD3DD->SetRenderState(D3DRENDERSTATE_ALPHAREF, (DWORD)0x00000001);
+				pD3DD->SetRenderState(D3DRENDERSTATE_ALPHAFUNC, D3DCMP_GREATEREQUAL);
+
+				pD3DD->SetRenderState(D3DRENDERSTATE_COLORKEYENABLE, FALSE);
+				pD3DD->SetRenderState(D3DRENDERSTATE_SRCBLEND, D3DBLEND_SRCALPHA);
+				pD3DD->SetRenderState(D3DRENDERSTATE_DESTBLEND, D3DBLEND_INVSRCALPHA);
+				forced_alpha_blend = true;
+			}
+		}
+	}
+
 	if(g_config.displaymode >= 0) {
 		typedef struct { float x, y, z, rhw; DWORD diffuse, specular; float u, v; } _FF8VERTEX;
 		_FF8VERTEX *vert = (_FF8VERTEX *)lpvVertices;
@@ -513,19 +554,12 @@ HRESULT __stdcall D3DDEVICE3_HOOK_DrawIndexedPrimitive(LPVOID *ppvOut, D3DPRIMIT
 			// Compare every vertex in each rect with every other, and adjust the uv coordinates
 			// to form a slightly smaller rect.
 			if(dwVertexCount%4 == 0 && vert[0].z == vert[1].z && vert[0].z == vert[2].z && vert[0].z == vert[3].z) {
-				LPDIRECT3DTEXTURE2 lpTexture;
-				((IDirect3DDevice3 *)ppvOut)->GetTexture(0, &lpTexture); 
 				if (g_config.force_texture_filtering && lpTexture) {
-					IDirectDrawSurface4 * p;
-					lpTexture->QueryInterface(IID_IDirectDrawSurface4, (void**)&p);
-					DDSURFACEDESC2 ddsd2;
-					memset(&ddsd2, 0, sizeof(DDSURFACEDESC2));
-					ddsd2.dwSize = sizeof(ddsd2);
-					p->GetSurfaceDesc(&ddsd2);
 					if (~ddsd2.dwFlags & DDSD_CKSRCBLT) {
 						((IDirect3DDevice3 *)ppvOut)->SetRenderState(D3DRENDERSTATE_TEXTUREMAG, D3DFILTER_LINEAR);
 					}
 				}
+
 				for (unsigned int i = 0; i < dwIndexCount; ++i) {
 					Log("%d", lpwIndices[i]);
 				}
@@ -634,10 +668,20 @@ HRESULT __stdcall D3DDEVICE3_HOOK_DrawIndexedPrimitive(LPVOID *ppvOut, D3DPRIMIT
 					ret = ofn(ppvOut, d3dptPrimitiveType, dwVertexTypeDesc, lpvVertices, dwVertexCount, lpwIndices, dwIndexCount, dwFlags);
 			}
 		}
+		if (forced_alpha_blend) {
+			((IDirect3DDevice3 *)ppvOut)->SetRenderState(D3DRENDERSTATE_ALPHABLENDENABLE, FALSE);
+			((IDirect3DDevice3 *)ppvOut)->SetRenderState(D3DRENDERSTATE_COLORKEYENABLE, TRUE);
+			((IDirect3DDevice3 *)ppvOut)->SetRenderState(D3DRENDERSTATE_SRCBLEND, D3DBLEND_ONE);
+			((IDirect3DDevice3 *)ppvOut)->SetRenderState(D3DRENDERSTATE_DESTBLEND, D3DBLEND_ZERO);
+			((IDirect3DDevice3 *)ppvOut)->SetRenderState(D3DRENDERSTATE_ALPHATESTENABLE, FALSE);
+		} else {
+			Log("alpha blending not forced\n");
+		}
 
 		//Log("vert[0] = {x=%.10f, y=%.10f, z=%.10f, rhw=%.3f, t1=%d, t2=%d, t3=%d, t4=%d\n", vert[0].x, vert[0].y, vert[0].z, vert[0].rhw, vert[0].t1, vert[0].t2, vert[0].t3, vert[0].t4 );
 		//Log("vert[1] = {x=%.10f, y=%.10f, z=%.10f, rhw=%.3f, t1=%d, t2=%d, t3=%d, t4=%d\n", vert[1].x, vert[1].y, vert[1].z, vert[0].rhw, vert[1].t1, vert[1].t2, vert[1].t3, vert[1].t4 );
 	}
+	if(lpTexture) lpTexture->Release();
 
 	return ret;
 }
@@ -733,6 +777,12 @@ HRESULT __stdcall D3DDEVICE3_HOOK_GetTexture(LPVOID *ppvOut, DWORD dwStage, LPDI
 	HRESULT ret = ofn(ppvOut, dwStage, lplpTexture);
 	LogDXError(ret);
 
+	if(*lplpTexture == g_truecolortexture && dwStage == 0) {
+		(*lplpTexture)->Release();
+		*lplpTexture = g_gameviewtexture;
+		(*lplpTexture)->AddRef();
+	}
+
 	Log("IDirect3DDevice3::%s(this=%#010lx, dwStage=%#010lx, lplpTexture=%#010lx *[%#010lx])\n", d3ddevice3_hooks[hpos].name, ppvOut, dwStage, lplpTexture, (lplpTexture != NULL ? *lplpTexture : NULL));
 
 	return ret;
@@ -801,6 +851,8 @@ void SaveDDBToDisk(HDC hDC, HBITMAP hBitmap, const char* fileName)
 HRESULT __stdcall D3DDEVICE3_HOOK_SetTexture(LPVOID *ppvOut, DWORD dwStage, LPDIRECT3DTEXTURE2 lpTexture) {
 	const unsigned int hpos = 38;
 
+	D3DDEVICE3_SetTexture_Type ofn = (D3DDEVICE3_SetTexture_Type)d3ddevice3_hooks[hpos].oldFunc;
+
 #ifdef _DEBUG_DLL
 	std::ifstream ifs;
 	char buf[MAX_PATH];
@@ -857,8 +909,57 @@ HRESULT __stdcall D3DDEVICE3_HOOK_SetTexture(LPVOID *ppvOut, DWORD dwStage, LPDI
 	}
 #endif
 
-	D3DDEVICE3_SetTexture_Type ofn = (D3DDEVICE3_SetTexture_Type)d3ddevice3_hooks[hpos].oldFunc;
+	IDirectDrawSurface4 * p = lpTexture ? textures[lpTexture] : 0;
+	if(p && dwStage == 0) {
+		Log("Replacing texture...\n");
+		DDSURFACEDESC2 sd;
+		memset(&sd, 0, sizeof(DDSURFACEDESC2));
+		sd.dwSize = sizeof(sd);
+		p->GetSurfaceDesc(&sd);
+		if(!g_truecolortexture || sd.dwWidth != g_tct_width || sd.dwHeight != g_tct_height) {
+			if(g_truecolortexture) {
+				ULONG refcnt = g_truecolortexture->Release();
+				textures.erase(textures.find(g_truecolortexture));
+				g_truecolortexture = 0;
+			}
+			IDirectDrawSurface4 * tct;
+			LPDIRECTDRAW4 lpDD = NULL;
+			sd.dwFlags |= DDSD_CAPS | DDSD_WIDTH | DDSD_HEIGHT | DDSD_PIXELFORMAT;
+			sd.ddsCaps.dwCaps &= ~DDSCAPS_ALLOCONLOAD;
+			sd.ddpfPixelFormat.dwFlags = DDPF_ALPHAPIXELS | DDPF_RGB;
+			sd.ddpfPixelFormat.dwRGBBitCount = 32;
+			sd.ddpfPixelFormat.dwRGBAlphaBitMask = 0xFF000000;
+			sd.ddpfPixelFormat.dwRBitMask        = 0x00FF0000;
+			sd.ddpfPixelFormat.dwGBitMask        = 0x0000FF00;
+			sd.ddpfPixelFormat.dwBBitMask        = 0x000000FF;
+			p->GetDDInterface((LPVOID *)&lpDD);
+			lpDD->CreateSurface(&sd, &tct, NULL);
+			SAFE_RELEASE(lpDD);
+			tct->QueryInterface(IID_IDirect3DTexture2, (void**)&g_truecolortexture);
+			tct->Release();
+			g_tct_height = sd.dwHeight;
+			g_tct_width = sd.dwWidth;
+		}
+		IDirectDrawSurface4 * p2 = textures[g_truecolortexture];
+		RECT r;
+		r.bottom = sd.dwHeight; r.top = 0; r.left = 0; r.right = sd.dwWidth;
+		DDBLTFX ddbltfx;
+		memset(&ddbltfx, 0, sizeof(ddbltfx));
+		ddbltfx.dwSize = sizeof(ddbltfx);
+		//ddbltfx.dwFillColor = 0x0FC1A004;
+		ddbltfx.dwFillColor = 0;
+		//ddbltfx.dwFillColor = 0x007F7F7F;
+		if(p2->IsLost()) p2->Restore();
+		p2->Blt(NULL, NULL, NULL, DDBLT_COLORFILL | DDBLT_WAIT, &ddbltfx);
+		p2->BltFast(0, 0, p, &r, sd.dwFlags & DDSD_CKSRCBLT ? DDBLTFAST_SRCCOLORKEY : DDBLTFAST_NOCOLORKEY);
+		if(g_gameviewtexture)
+			g_gameviewtexture->Release();
+		g_gameviewtexture = lpTexture;
+		g_gameviewtexture->AddRef();
+		lpTexture = g_truecolortexture;
+	}
 	HRESULT ret = ofn(ppvOut, dwStage, lpTexture);
+	//if(g_truecolortexture) {g_truecolortexture->AddRef();Log("tct refcnt C: %ld\n", g_truecolortexture->Release());}
 	LogDXError(ret);/*
 	if (g_config.force_texture_filtering && lpTexture) {
 		IDirectDrawSurface4 * p;

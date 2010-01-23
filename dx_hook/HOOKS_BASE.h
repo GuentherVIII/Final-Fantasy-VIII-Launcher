@@ -79,7 +79,7 @@ extern BOOL g_binkActive;
 extern LPDIRECTDRAWSURFACE4 g_decoyBackBuffer;
 extern LPVOID g_binkStruct;
 extern CVIEWPORT g_currentviewport;
-extern std::map<LPVOID, LPVOID> textures;
+extern std::map<LPDIRECT3DTEXTURE2, LPDIRECTDRAWSURFACE4> textures;
 extern LPVOID g_d3ddevice;
 extern GAME g_game;
 extern DEBUGOPTIONS g_debugoptions;
