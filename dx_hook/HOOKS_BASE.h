@@ -45,8 +45,10 @@ struct SVTBL_HOOK {
 };
 
 struct CVIEWPORT {
-	DWORD width, height, x, y;
-	DWORD old_width, old_height, old_x, old_y;
+	DWORD width, height;
+	int x, y;
+	DWORD old_width, old_height;
+	int old_x, old_y;
 };
 
 struct GAME {

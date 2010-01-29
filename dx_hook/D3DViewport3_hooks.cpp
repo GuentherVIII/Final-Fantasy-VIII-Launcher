@@ -323,15 +323,19 @@ HRESULT __stdcall D3DVIEWPORT3_HOOK_SetViewport2(LPVOID *ppvOut, LPD3DVIEWPORT2 
 		g_currentviewport.old_x = lpData->dwX;
 		g_currentviewport.old_y = lpData->dwY;
 
-		lpData->dwWidth = (DWORD)(lpData->dwWidth * g_game.modX);
-		lpData->dwHeight = (DWORD)(lpData->dwHeight * g_game.modY);
-		lpData->dwX = (DWORD)(lpData->dwX * g_game.modX) + ((displaymode_options[g_config.displaymode].resX - g_game.width) / 2);
-		lpData->dwY = (DWORD)(lpData->dwY * g_game.modY) + ((displaymode_options[g_config.displaymode].resY - g_game.height) / 2);
+		g_currentviewport.width = (DWORD)(lpData->dwWidth * g_game.modX);
+		g_currentviewport.height = (DWORD)(lpData->dwHeight * g_game.modY);
+		g_currentviewport.x = (int)(lpData->dwX * g_game.modX) + (((int)displaymode_options[g_config.displaymode].resX - (int)g_game.width) / 2);
+		g_currentviewport.y = (int)(lpData->dwY * g_game.modY) + (((int)displaymode_options[g_config.displaymode].resY - (int)g_game.height) / 2);
 
-		g_currentviewport.width = lpData->dwWidth;
-		g_currentviewport.height = lpData->dwHeight;
-		g_currentviewport.x = lpData->dwX;
-		g_currentviewport.y = lpData->dwY;
+		lpData->dwX = g_currentviewport.x;
+		if(g_currentviewport.x < 0)
+			lpData->dwX = 0;
+		lpData->dwY = g_currentviewport.y;
+		if(g_currentviewport.y < 0)
+			lpData->dwY = 0;
+		lpData->dwWidth = min(displaymode_options[g_config.displaymode].resX - lpData->dwX, g_currentviewport.width);
+		lpData->dwHeight = min(displaymode_options[g_config.displaymode].resY - lpData->dwY, g_currentviewport.height);
 	} else if(lpData->dwSize == 0) {
 		lpData->dwSize = sizeof(D3DVIEWPORT2);
 	}

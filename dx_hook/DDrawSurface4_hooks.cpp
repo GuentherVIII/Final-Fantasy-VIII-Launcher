@@ -561,10 +561,20 @@ HRESULT __stdcall DDRAWSURFACE4_HOOK_Lock(LPVOID *ppvOut, LPRECT lpDestRect, LPD
 			if(g_decoyBackBuffer->IsLost())
 				g_decoyBackBuffer->Restore();
 			RECT rcDest, rcSource;
-			rcSource.top = (lpDDSurfaceDesc->dwHeight - g_game.height)/2; rcSource.bottom = lpDDSurfaceDesc->dwHeight - rcSource.top;
-			rcSource.left = (lpDDSurfaceDesc->dwWidth - g_game.width)/2; rcSource.right = lpDDSurfaceDesc->dwWidth - rcSource.left;
-			rcDest.top = 0; rcDest.bottom = 480;
-			rcDest.left = 0; rcDest.right = 640;
+			if(lpDDSurfaceDesc->dwHeight >= g_game.height) {
+				rcSource.top = (lpDDSurfaceDesc->dwHeight - g_game.height)/2; rcSource.bottom = lpDDSurfaceDesc->dwHeight - rcSource.top;
+				rcDest.top = 0; rcDest.bottom = 480;
+			} else {
+				rcSource.top = 0; rcSource.bottom = lpDDSurfaceDesc->dwHeight;
+				rcDest.top = (g_game.height - lpDDSurfaceDesc->dwHeight) / (2 * g_game.modY); rcDest.bottom = 480 - rcDest.top;
+			}
+			if(lpDDSurfaceDesc->dwWidth >= g_game.width) {
+				rcSource.left = (lpDDSurfaceDesc->dwWidth - g_game.width)/2; rcSource.right = lpDDSurfaceDesc->dwWidth - rcSource.left;
+				rcDest.left = 0; rcDest.right = 640;
+			} else {
+				rcSource.left = 0; rcSource.right = lpDDSurfaceDesc->dwWidth;
+				rcDest.left = (g_game.width - lpDDSurfaceDesc->dwWidth) / (2 * g_game.modX); rcDest.bottom = 640 - rcDest.left;
+			}
 			g_decoyBackBuffer->Blt(&rcDest, (IDirectDrawSurface4 *)ppvOut, &rcSource, DDBLT_WAIT, NULL);
 			HRESULT ret = g_decoyBackBuffer->Lock(0, &ddsd, DDLOCK_NOSYSLOCK | DDLOCK_WAIT, 0);
 			lpDDSurfaceDesc->dwWidth = ddsd.dwWidth;
@@ -700,11 +710,20 @@ HRESULT __stdcall DDRAWSURFACE4_HOOK_Unlock(LPVOID *ppvOut, LPRECT lpRect) {
 		   (sd.ddsCaps.dwCaps & DDSCAPS_BACKBUFFER)) {
 			Log("Backbuffer unlocking: Rescaling surface... (hopefully with a Bink video)\n");
 			RECT rcDest, rcSource;
-			rcSource.top = 0; rcSource.bottom = 480;
-			rcSource.left = 0; rcSource.right = 640;
-			rcDest.top = (sd.dwHeight - g_game.height) / 2; rcDest.bottom = sd.dwHeight - rcDest.top;
-			rcDest.left = (sd.dwWidth - g_game.width) / 2; rcDest.right = sd.dwWidth - rcDest.left;
-
+			if(sd.dwHeight >= g_game.height) {
+				rcSource.top = 0; rcSource.bottom = 480;
+				rcDest.top = (sd.dwHeight - g_game.height) / 2; rcDest.bottom = sd.dwHeight - rcDest.top;
+			} else {
+				rcSource.top = (g_game.height - sd.dwHeight) / (2 * g_game.modY); rcSource.bottom = 480 - rcSource.top;
+				rcDest.top = 0; rcDest.bottom = sd.dwHeight;
+			}
+			if(sd.dwWidth >= g_game.width) {
+				rcSource.left = 0; rcSource.right = 640;
+				rcDest.left = (sd.dwWidth - g_game.width) / 2; rcDest.right = sd.dwWidth - rcDest.left;
+			} else {
+				rcSource.left = (g_game.width - sd.dwWidth) / (2 * g_game.modX); rcSource.bottom = 640 - rcSource.left;
+				rcDest.left = 0; rcDest.right = sd.dwWidth;
+			}
 			HRESULT ret = g_decoyBackBuffer->Unlock(0);
 			((IDirectDrawSurface4 *)ppvOut)->Blt(&rcDest, g_decoyBackBuffer, &rcSource, DDBLT_WAIT, NULL);
 			return ret;
