@@ -527,7 +527,7 @@ static LPDIRECTDRAWSURFACE4 g_lockedSurface;
 
 HRESULT __stdcall DDRAWSURFACE4_HOOK_Lock(LPVOID *ppvOut, LPRECT lpDestRect, LPDDSURFACEDESC2 lpDDSurfaceDesc, DWORD dwFlags, HANDLE hEvent) {
 	const unsigned int hpos = 25;
-	dwFlags |= DDLOCK_NOSYSLOCK;
+	//dwFlags |= DDLOCK_NOSYSLOCK;
 	// If the game is locking the backbuffer, it can do arbitrary stuff in there,
 	// which this wrapper has no chance of making scaled properly.
 	// So the game is given a surface with the dimension it expects, and the wrapper will

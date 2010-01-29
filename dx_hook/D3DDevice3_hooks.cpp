@@ -554,12 +554,6 @@ HRESULT __stdcall D3DDEVICE3_HOOK_DrawIndexedPrimitive(LPVOID *ppvOut, D3DPRIMIT
 			// Compare every vertex in each rect with every other, and adjust the uv coordinates
 			// to form a slightly smaller rect.
 			if(dwVertexCount%4 == 0 && vert[0].z == vert[1].z && vert[0].z == vert[2].z && vert[0].z == vert[3].z) {
-				if (g_config.force_texture_filtering && lpTexture) {
-					if (~ddsd2.dwFlags & DDSD_CKSRCBLT) {
-						((IDirect3DDevice3 *)ppvOut)->SetRenderState(D3DRENDERSTATE_TEXTUREMAG, D3DFILTER_LINEAR);
-					}
-				}
-
 				for (unsigned int i = 0; i < dwIndexCount; ++i) {
 					Log("%d", lpwIndices[i]);
 				}
@@ -589,6 +583,14 @@ HRESULT __stdcall D3DDEVICE3_HOOK_DrawIndexedPrimitive(LPVOID *ppvOut, D3DPRIMIT
 								vert[k].u += adjX;
 							}
 						}
+					}
+				}
+				// In the original resolution, a lot of textures could just be displayed pixel perfect
+				// But in a higher resolution, the textures are magnified, and look better with biliner filtering
+				// Ideally, they could be magnified with an even better filter, but that's not as easy as one DX call...
+				if (g_config.force_texture_filtering && lpTexture) {
+					if (~ddsd2.dwFlags & DDSD_CKSRCBLT) {
+						((IDirect3DDevice3 *)ppvOut)->SetRenderState(D3DRENDERSTATE_TEXTUREMAG, D3DFILTER_LINEAR);
 					}
 				}
 			}
@@ -777,7 +779,7 @@ HRESULT __stdcall D3DDEVICE3_HOOK_GetTexture(LPVOID *ppvOut, DWORD dwStage, LPDI
 	HRESULT ret = ofn(ppvOut, dwStage, lplpTexture);
 	LogDXError(ret);
 
-	if(*lplpTexture == g_truecolortexture && dwStage == 0) {
+	if(*lplpTexture && *lplpTexture == g_truecolortexture && dwStage == 0) {
 		(*lplpTexture)->Release();
 		*lplpTexture = g_gameviewtexture;
 		(*lplpTexture)->AddRef();
