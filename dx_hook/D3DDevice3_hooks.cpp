@@ -615,19 +615,11 @@ HRESULT __stdcall D3DDEVICE3_HOOK_DrawIndexedPrimitive(LPVOID *ppvOut, D3DPRIMIT
 		{
 			// Draw extra lines to make them thick enough
 			// Only works for horizontal lines, I've yet to see others
-			bool any = true;
-			while(any) {
-				any = false;
+			for(int i = 1; i < g_game.modY; ++i) {
 				for(DWORD j = 0; j < dwVertexCount; j++) {
-					int oy = int(vert[j].y / g_game.modY);
-					int ny = int((vert[j].y + 1) / g_game.modY);
-					if (oy == ny) {
-						vert[j].y += 1;
-						any = true;
-					}
+					vert[j].y += 1;
 				}
-				if(any)
-					ret = ofn(ppvOut, d3dptPrimitiveType, dwVertexTypeDesc, lpvVertices, dwVertexCount, lpwIndices, dwIndexCount, dwFlags);
+				ret = ofn(ppvOut, d3dptPrimitiveType, dwVertexTypeDesc, lpvVertices, dwVertexCount, lpwIndices, dwIndexCount, dwFlags);
 			}
 		}
 		if (forced_alpha_blend) {
