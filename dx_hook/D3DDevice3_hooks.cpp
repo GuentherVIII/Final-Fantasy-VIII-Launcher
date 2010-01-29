@@ -517,21 +517,6 @@ HRESULT __stdcall D3DDEVICE3_HOOK_DrawIndexedPrimitive(LPVOID *ppvOut, D3DPRIMIT
 		//Log("vert[1] = {x=%.10f, y=%.10f, z=%.10f, rhw=%#010lx, t1=%#010lx, t2=%#010lx, t3=%#010lx, t4=%#010lx\n", vert[1].x, vert[1].y, vert[1].z, vert[0].rhw, vert[1].t1, vert[1].t2, vert[1].t3, vert[1].t4 );
 
 		if(dwVertexCount >= 1) {
-			/*float modX = (float)displaymode_options[g_config.displaymode].resX/640.0f;
-			float modY = (float)displaymode_options[g_config.displaymode].resY/480.0f;
-			float mod = (modX > modY ? modY : modX);*/
-			float offsetX = 0;
-			float offsetY = 0;
-			if(g_config.stretch_4_3_ar == 0) {
-				offsetX = (float)(g_currentviewport.x-g_currentviewport.old_x*g_game.mod);
-				offsetY = (float)(g_currentviewport.y-g_currentviewport.old_y*g_game.mod);
-			} else {
-				offsetX = (float)(g_currentviewport.x-g_currentviewport.old_x*g_game.modX);
-				offsetY = (float)(g_currentviewport.y-g_currentviewport.old_y*g_game.modY);
-			}
-			//Log("Mod=%f, OffsetX=%f, OffsetY=%f", g_game.mod, offsetX, offsetY);
-			//Log("g_currentviewport { x=%f, y=%f, old_x=%f, old_y=%f }\n", g_currentviewport.x, g_currentviewport.y, g_currentviewport.old_x, g_currentviewport.old_y);
-
 			float adjX = 0, adjY = 0;
 			if(g_config.stretch_4_3_ar == 0) { 
 				adjX = adjY = (g_config.expert_mode >= 1 ? g_config.tex_uvmap_adj_backgrounds : 0.0005f);
@@ -597,41 +582,16 @@ HRESULT __stdcall D3DDEVICE3_HOOK_DrawIndexedPrimitive(LPVOID *ppvOut, D3DPRIMIT
 
 			for(DWORD i = 0; i < dwVertexCount; i++) {
 				float pt[2] = { vert[i].x, vert[i].y };
-				/*if(vert[i].rhw == 1.0f) {
-					for(UINT n = 0; n < 2; n++) {
-						if(n == 1) continue;
-						if(pt[n] < 0) {
-							UINT c = (UINT)abs(ceil(pt[n] * 100)) % 100;
-							//if(c >= 0 && c < 13) c = 0;
-							//else if(c >= 13 && c < 38) c = 25;
-							//else if(c >= 38 && c < 63) c = 50;
-							//else if(c >= 63 && c < 88) c = 75;
-							//else c = 100;
-							if(c >= 0 && c < 50) c = 0;
-							else c = 100;
+				// a full screen blit in DX needs to have top=-0.5, left=-0.5, right=resX-0.5, bottom=resY-0.5
+				// Unfortunately, ff8 uses 0, 0, resX, resY instead, and relies on nearest point sampling to cover up this shift
+				// but with multisampling for antialiasing, the shift becomes apparent
+				// This is especially noticable if a scrollable background is painted, which covers the small stripe at the top and left,
+				// and then faded to black by a fullscreen blit of semitransparent black, which fails to fully cover the background
+				// The fix is easy but assumes that the game always blits it's content shifted by half a pixel.
+				// Which is probably the case because the DX behaviour is insane ;-)
+				vert[i].x  = (pt[0] - g_currentviewport.old_x /*+ 0.5f*/) * g_game.modX + g_currentviewport.x - 0.5f;
+				vert[i].y  = (pt[1] - g_currentviewport.old_y /*+ 0.5f*/) * g_game.modY + g_currentviewport.y - 0.5f;
 
-							pt[n] = (ceil(pt[n] * 100) - (UINT)ceil(pt[n] * 100) % 100 - c) / 100;
-						} else {
-							UINT c = (UINT)floor(pt[n] * 100) % 100;
-							//if(c >= 0 && c < 13) c = 0;
-							//else if(c >= 13 && c < 38) c = 25;
-							//else if(c >= 38 && c < 63) c = 50;
-							//else if(c >= 63 && c < 88) c = 75;
-							//else c = 100;
-							if(c >= 0 && c < 50) c = 0;
-							else c = 100;
-
-							pt[n] = (floor(pt[n] * 100) - (UINT)floor(pt[n] * 100) % 100 + c) / 100;
-						}
-					}
-				}*/
-				if(g_config.stretch_4_3_ar == 0) { 
-					vert[i].x  = pt[0]*g_game.mod+offsetX;
-					vert[i].y  = pt[1]*g_game.mod+offsetY;
-				} else {
-					vert[i].x  = pt[0]*g_game.modX+offsetX;
-					vert[i].y  = pt[1]*g_game.modY+offsetY;
-				}
 				Log("vert[%d] = {x=%.10f, y=%.10f, z=%.10f, rhw=%.10f, diffuse=%#010lx, specular=%#010lx, u=%.10f, v=%.10f\n", i, vert[i].x, vert[i].y, vert[i].z, vert[i].rhw, vert[i].diffuse, vert[i].specular, vert[i].u, vert[i].v );
 				
 				if(g_debugoptions.tex_uvmap_notextures == true) {

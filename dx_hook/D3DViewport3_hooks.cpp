@@ -323,61 +323,10 @@ HRESULT __stdcall D3DVIEWPORT3_HOOK_SetViewport2(LPVOID *ppvOut, LPD3DVIEWPORT2 
 		g_currentviewport.old_x = lpData->dwX;
 		g_currentviewport.old_y = lpData->dwY;
 
-		/*float mod = ((float)displaymode_options[g_config.displaymode].resX/640.0f);
-		lpData->dwWidth = (DWORD)((float)lpData->dwWidth*mod);
-		lpData->dwHeight = (DWORD)((float)lpData->dwHeight*mod);
-		lpData->dwX = (DWORD)((float)lpData->dwX*mod);
-		lpData->dwY = (DWORD)((float)lpData->dwY*mod);*/
-
-		/*float modX = (float)displaymode_options[g_config.displaymode].resX/640.0f;
-		float modY = (float)displaymode_options[g_config.displaymode].resY/480.0f;
-		float mod = (modX > modY ? modY : modX);
-		float width = (float)displaymode_options[g_config.displaymode].resX;
-		float height = (float)displaymode_options[g_config.displaymode].resY;
-
-		if(modX > modY) {
-			//4:3, 16:10, 16:9 etc.
-			width = 640.0f*modY;
-			if((UINT)(floor(width))%2==1) width = ceil(width);
-			else width = floor(width);
-		} else {
-			//1:1, 1:2 etc. (not really used but it can never hurt...)
-			height = 480.0f*modX;
-			if((UINT)(floor(height))%2==1) height = ceil(height);
-			else height = floor(height);
-		}*/
-
-		if(g_config.stretch_4_3_ar == 0) { 
-			lpData->dwWidth = (DWORD)((float)lpData->dwWidth*g_game.mod);
-			lpData->dwHeight = (DWORD)((float)lpData->dwHeight*g_game.mod);
-			lpData->dwX = (DWORD)(((float)lpData->dwX*g_game.mod)+(displaymode_options[g_config.displaymode].resX-g_game.width)/2);
-			lpData->dwY = (DWORD)(((float)lpData->dwY*g_game.mod)+(displaymode_options[g_config.displaymode].resY-g_game.height)/2);
-		} else {
-			lpData->dwWidth = (DWORD)((float)lpData->dwWidth*g_game.modX);
-			lpData->dwHeight = (DWORD)((float)lpData->dwHeight*g_game.modY);
-			lpData->dwX = (DWORD)((float)lpData->dwX*g_game.modX);
-			lpData->dwY = (DWORD)((float)lpData->dwY*g_game.modY);
-		}
-
-		/*float modX = (float)displaymode_options[g_config.displaymode].resX/640.0f;
-		float modY = (float)displaymode_options[g_config.displaymode].resY/480.0f;
-		UINT width = 0, height = 0, x = 0, y = 0;
-		if(modX > modY) {
-			//4:3, 16:10, 16:9 etc.
-			width = (DWORD)((640.0f*modY)-(int)(g_currentviewport.old_x*modY*2));
-			height = displaymode_options[g_config.displaymode].resY-(int)(g_currentviewport.old_y*modY*2);
-		} else {
-			//1:1, 1:2 etc. (not really used but it can never hurt...)
-			width = displaymode_options[g_config.displaymode].resX-(int)(g_currentviewport.old_x*modX*2);
-			height = (DWORD)((480.0f*modX)-(int)(g_currentviewport.old_y*modX*2));
-		}
-		x = (DWORD)((displaymode_options[g_config.displaymode].resX-width)/2);
-		y = (DWORD)((displaymode_options[g_config.displaymode].resY-height)/2);
-
-		lpData->dwX = x;
-		lpData->dwY = y;
-		lpData->dwWidth = width;
-		lpData->dwHeight = height;*/
+		lpData->dwWidth = (DWORD)(lpData->dwWidth * g_game.modX);
+		lpData->dwHeight = (DWORD)(lpData->dwHeight * g_game.modY);
+		lpData->dwX = (DWORD)(lpData->dwX * g_game.modX) + ((displaymode_options[g_config.displaymode].resX - g_game.width) / 2);
+		lpData->dwY = (DWORD)(lpData->dwY * g_game.modY) + ((displaymode_options[g_config.displaymode].resY - g_game.height) / 2);
 
 		g_currentviewport.width = lpData->dwWidth;
 		g_currentviewport.height = lpData->dwHeight;

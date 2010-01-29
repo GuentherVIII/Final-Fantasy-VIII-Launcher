@@ -50,7 +50,7 @@ struct CVIEWPORT {
 };
 
 struct GAME {
-	float modX, modY, mod;
+	float modX, modY;
 	DWORD width, height;
 };
 
