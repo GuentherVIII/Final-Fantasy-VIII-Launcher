@@ -527,6 +527,12 @@ static LPDIRECTDRAWSURFACE4 g_lockedSurface;
 
 HRESULT __stdcall DDRAWSURFACE4_HOOK_Lock(LPVOID *ppvOut, LPRECT lpDestRect, LPDDSURFACEDESC2 lpDDSurfaceDesc, DWORD dwFlags, HANDLE hEvent) {
 	const unsigned int hpos = 25;
+	
+	char dwFlags_buffer[LOGBUFFER_MAX];
+	FlagsToString(FLAGS_DDLOCK, CFLAGS_DDLOCK, dwFlags, dwFlags_buffer, LOGBUFFER_MAX);
+
+	Log("IDirectDrawSurface4::%s(this=%#010lx, lpDestRect=%#010lx { left=%d, right=%d, top=%d, bottom=%d }, lpDDSurfaceDesc=%#010lx, dwFlags=%#010lx (%s), hEvent=%#010lx)\n", ddrawsurface4_hooks[hpos].name, ppvOut, lpDestRect, (lpDestRect != NULL ? lpDestRect->left : NULL), (lpDestRect != NULL ? lpDestRect->right : NULL), (lpDestRect != NULL ? lpDestRect->top : NULL), (lpDestRect != NULL ? lpDestRect->bottom : NULL), lpDDSurfaceDesc, dwFlags, dwFlags_buffer, hEvent);
+
 	//dwFlags |= DDLOCK_NOSYSLOCK;
 	// If the game is locking the backbuffer, it can do arbitrary stuff in there,
 	// which this wrapper has no chance of making scaled properly.
@@ -572,8 +578,6 @@ HRESULT __stdcall DDRAWSURFACE4_HOOK_Lock(LPVOID *ppvOut, LPRECT lpDestRect, LPD
 	DDRAWSURFACE4_Lock_Type ofn = (DDRAWSURFACE4_Lock_Type)ddrawsurface4_hooks[hpos].oldFunc;
 	HRESULT ret = ofn(ppvOut, lpDestRect, lpDDSurfaceDesc, dwFlags, hEvent);
 	LogDXError(ret);
-
-	Log("IDirectDrawSurface4::%s(this=%#010lx, lpDestRect=%#010lx { left=%d, right=%d, top=%d, bottom=%d }, lpDDSurfaceDesc=%#010lx, dwFlags=%#010lx, hEvent=%#010lx)\n", ddrawsurface4_hooks[hpos].name, ppvOut, lpDestRect, (lpDestRect != NULL ? lpDestRect->left : NULL), (lpDestRect != NULL ? lpDestRect->right : NULL), (lpDestRect != NULL ? lpDestRect->top : NULL), (lpDestRect != NULL ? lpDestRect->bottom : NULL), lpDDSurfaceDesc, dwFlags, hEvent);
 	
 	if(lpDDSurfaceDesc != NULL) {
 		char dwFlags_buffer[LOGBUFFER_MAX], ddscaps1_buffer[LOGBUFFER_MAX], ddpf_buffer[LOGBUFFER_MAX];
@@ -684,6 +688,8 @@ HRESULT __stdcall DDRAWSURFACE4_HOOK_SetPalette(LPVOID *ppvOut, LPDIRECTDRAWPALE
 HRESULT __stdcall DDRAWSURFACE4_HOOK_Unlock(LPVOID *ppvOut, LPRECT lpRect) {
 	const unsigned int hpos = 32;
 
+	Log("IDirectDrawSurface4::%s(this=%#010lx, lpRect=%#010lx { left=%d, right=%d, top=%d, bottom=%d })\n", ddrawsurface4_hooks[hpos].name, ppvOut, lpRect, (lpRect != NULL ? lpRect->left : NULL), (lpRect != NULL ? lpRect->right : NULL), (lpRect != NULL ? lpRect->top : NULL), (lpRect != NULL ? lpRect->bottom : NULL));
+
 	if(g_config.displaymode) {
 		DDSURFACEDESC2 sd;
 		memset(&sd, 0, sizeof(DDSURFACEDESC2));
@@ -723,8 +729,6 @@ HRESULT __stdcall DDRAWSURFACE4_HOOK_Unlock(LPVOID *ppvOut, LPRECT lpRect) {
 	DDRAWSURFACE4_Unlock_Type ofn = (DDRAWSURFACE4_Unlock_Type)ddrawsurface4_hooks[hpos].oldFunc;
 	HRESULT ret = ofn(ppvOut, lpRect);
 	LogDXError(ret);
-
-	Log("IDirectDrawSurface4::%s(this=%#010lx, lpRect=%#010lx { left=%d, right=%d, top=%d, bottom=%d })\n", ddrawsurface4_hooks[hpos].name, ppvOut, lpRect, (lpRect != NULL ? lpRect->left : NULL), (lpRect != NULL ? lpRect->right : NULL), (lpRect != NULL ? lpRect->top : NULL), (lpRect != NULL ? lpRect->bottom : NULL));
 
 	return ret;
 }

@@ -50,6 +50,8 @@ extern PAIR_FLAG FLAGS_D3DFVF[];
 extern UINT CFLAGS_D3DFVF;
 extern PAIR_FLAG FLAGS_DDPF[];
 extern UINT CFLAGS_DDPF;
+extern PAIR_FLAG FLAGS_DDLOCK[];
+extern UINT CFLAGS_DDLOCK;
 
 void FlagsToString(PAIR_FLAG FLAGS[], UINT num, DWORD dwFlags, char *buffer, UINT size);
 
