@@ -9,6 +9,7 @@
 #define IDC_DDRESOLUTION                1001
 #define IDC_DDDISPLAYMODE               1001
 #define IDC_DDFSAA                      1002
+#define IDC_ALPHA                       1005
 #define IDC_BTPLAY                      1006
 #define IDC_LFILTER                     1007
 #define IDC_8BITPFIX                    1008

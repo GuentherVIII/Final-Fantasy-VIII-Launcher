@@ -83,6 +83,9 @@ int LoadConfig(FF8Config &cfg) {
 				//Force Linear Texture Filtering
 				} else if(_tcscmp(_T("force_texture_filtering"), buffer) == 0) {
 					cfg.force_texture_filtering = parseInt(val);
+				//Force Alpha transparency instead of color key
+				} else if(_tcscmp(_T("force_alpha_transparency"), buffer) == 0) {
+					cfg.force_alpha_transparency = parseInt(val);
 				//Stretch 4:3 Aspect Ratio
 				} else if(_tcscmp(_T("stretch_4:3_ar"), buffer) == 0) {
 					cfg.stretch_4_3_ar = parseInt(val);
@@ -112,6 +115,7 @@ int SaveConfig(FF8Config &cfg) {
 		ofs << "fsaa=" << cfg.fsaa << "\n";
 		ofs << "8bit_paletted_textures_fix=" << cfg.b8_paletted_textures_fix << "\n";
 		ofs << "force_texture_filtering=" << cfg.force_texture_filtering << "\n";
+		ofs << "force_alpha_transparency=" << cfg.force_alpha_transparency << "\n";
 		ofs << "stretch_4:3_ar=" << cfg.stretch_4_3_ar << "\n";
 		ofs << "expert_mode=" << cfg.expert_mode << "\n";
 		ofs << "expert_tex_uvmap_adj_backgrounds=" << cfg.tex_uvmap_adj_backgrounds << "\n";

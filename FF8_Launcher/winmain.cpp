@@ -156,6 +156,9 @@ LRESULT CALLBACK InterfaceProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lP
 		HWND hwndLinearFilter = GetDlgItem(g_hwndInterface, IDC_LFILTER);
 		Button_SetCheck(hwndLinearFilter, (g_config.force_texture_filtering ? BST_CHECKED : BST_UNCHECKED));
 
+		HWND hwndAlphaTransparency = GetDlgItem(g_hwndInterface, IDC_ALPHA);
+		Button_SetCheck(hwndAlphaTransparency, (g_config.force_alpha_transparency ? BST_CHECKED : BST_UNCHECKED));
+
 		HWND hwndExpertMode = GetDlgItem(g_hwndInterface, IDC_EXPERTMODE);
 		Button_SetCheck(hwndExpertMode, (g_config.expert_mode ? BST_CHECKED : BST_UNCHECKED));
 		
@@ -194,6 +197,12 @@ LRESULT CALLBACK InterfaceProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lP
 
 		case IDC_LFILTER:
 			g_config.force_texture_filtering = Button_GetCheck(GetDlgItem(g_hwndInterface, IDC_LFILTER)) == BST_CHECKED;
+			SaveConfig(g_config);
+			
+			return TRUE;
+
+		case IDC_ALPHA:
+			g_config.force_alpha_transparency = Button_GetCheck(GetDlgItem(g_hwndInterface, IDC_ALPHA)) == BST_CHECKED;
 			SaveConfig(g_config);
 			
 			return TRUE;

@@ -482,7 +482,7 @@ HRESULT __stdcall D3DDEVICE3_HOOK_DrawIndexedPrimitive(LPVOID *ppvOut, D3DPRIMIT
 		IDirectDrawSurface4 * p;
 		p = textures[lpTexture];
 		p->GetSurfaceDesc(&ddsd2);
-		if (ddsd2.dwFlags & DDSD_CKSRCBLT) {
+		if(g_config.force_alpha_transparency && ddsd2.dwFlags & DDSD_CKSRCBLT) {
 			D3DBLEND srcblend;
 			((IDirect3DDevice3 *)ppvOut)->GetRenderState(D3DRENDERSTATE_SRCBLEND, (LPDWORD)&srcblend);
 			D3DBLEND destblend;
@@ -912,53 +912,55 @@ HRESULT __stdcall D3DDEVICE3_HOOK_SetTexture(LPVOID *ppvOut, DWORD dwStage, LPDI
 #endif
 
 	IDirectDrawSurface4 * p = lpTexture ? textures[lpTexture] : 0;
-	if(p && dwStage == 0) {
+	if(g_config.force_alpha_transparency && p && dwStage == 0) {
 		Log("Replacing texture...\n");
 		DDSURFACEDESC2 sd;
 		memset(&sd, 0, sizeof(DDSURFACEDESC2));
 		sd.dwSize = sizeof(sd);
 		p->GetSurfaceDesc(&sd);
-		if(!g_truecolortexture || sd.dwWidth != g_tct_width || sd.dwHeight != g_tct_height) {
-			if(g_truecolortexture) {
-				ULONG refcnt = g_truecolortexture->Release();
-				textures.erase(textures.find(g_truecolortexture));
-				g_truecolortexture = 0;
+		if(sd.dwFlags & DDSD_CKSRCBLT) {
+			if(!g_truecolortexture || sd.dwWidth != g_tct_width || sd.dwHeight != g_tct_height) {
+				if(g_truecolortexture) {
+					ULONG refcnt = g_truecolortexture->Release();
+					textures.erase(textures.find(g_truecolortexture));
+					g_truecolortexture = 0;
+				}
+				IDirectDrawSurface4 * tct;
+				LPDIRECTDRAW4 lpDD = NULL;
+				sd.dwFlags |= DDSD_CAPS | DDSD_WIDTH | DDSD_HEIGHT | DDSD_PIXELFORMAT;
+				sd.ddsCaps.dwCaps &= ~DDSCAPS_ALLOCONLOAD;
+				sd.ddpfPixelFormat.dwFlags = DDPF_ALPHAPIXELS | DDPF_RGB;
+				sd.ddpfPixelFormat.dwRGBBitCount = 32;
+				sd.ddpfPixelFormat.dwRGBAlphaBitMask = 0xFF000000;
+				sd.ddpfPixelFormat.dwRBitMask        = 0x00FF0000;
+				sd.ddpfPixelFormat.dwGBitMask        = 0x0000FF00;
+				sd.ddpfPixelFormat.dwBBitMask        = 0x000000FF;
+				p->GetDDInterface((LPVOID *)&lpDD);
+				lpDD->CreateSurface(&sd, &tct, NULL);
+				SAFE_RELEASE(lpDD);
+				tct->QueryInterface(IID_IDirect3DTexture2, (void**)&g_truecolortexture);
+				tct->Release();
+				g_tct_height = sd.dwHeight;
+				g_tct_width = sd.dwWidth;
 			}
-			IDirectDrawSurface4 * tct;
-			LPDIRECTDRAW4 lpDD = NULL;
-			sd.dwFlags |= DDSD_CAPS | DDSD_WIDTH | DDSD_HEIGHT | DDSD_PIXELFORMAT;
-			sd.ddsCaps.dwCaps &= ~DDSCAPS_ALLOCONLOAD;
-			sd.ddpfPixelFormat.dwFlags = DDPF_ALPHAPIXELS | DDPF_RGB;
-			sd.ddpfPixelFormat.dwRGBBitCount = 32;
-			sd.ddpfPixelFormat.dwRGBAlphaBitMask = 0xFF000000;
-			sd.ddpfPixelFormat.dwRBitMask        = 0x00FF0000;
-			sd.ddpfPixelFormat.dwGBitMask        = 0x0000FF00;
-			sd.ddpfPixelFormat.dwBBitMask        = 0x000000FF;
-			p->GetDDInterface((LPVOID *)&lpDD);
-			lpDD->CreateSurface(&sd, &tct, NULL);
-			SAFE_RELEASE(lpDD);
-			tct->QueryInterface(IID_IDirect3DTexture2, (void**)&g_truecolortexture);
-			tct->Release();
-			g_tct_height = sd.dwHeight;
-			g_tct_width = sd.dwWidth;
+			IDirectDrawSurface4 * p2 = textures[g_truecolortexture];
+			RECT r;
+			r.bottom = sd.dwHeight; r.top = 0; r.left = 0; r.right = sd.dwWidth;
+			DDBLTFX ddbltfx;
+			memset(&ddbltfx, 0, sizeof(ddbltfx));
+			ddbltfx.dwSize = sizeof(ddbltfx);
+			//ddbltfx.dwFillColor = 0x0FC1A004;
+			ddbltfx.dwFillColor = 0;
+			//ddbltfx.dwFillColor = 0x007F7F7F;
+			if(p2->IsLost()) p2->Restore();
+			p2->Blt(NULL, NULL, NULL, DDBLT_COLORFILL | DDBLT_WAIT, &ddbltfx);
+			p2->BltFast(0, 0, p, &r, sd.dwFlags & DDSD_CKSRCBLT ? DDBLTFAST_SRCCOLORKEY : DDBLTFAST_NOCOLORKEY);
+			if(g_gameviewtexture)
+				g_gameviewtexture->Release();
+			g_gameviewtexture = lpTexture;
+			g_gameviewtexture->AddRef();
+			lpTexture = g_truecolortexture;
 		}
-		IDirectDrawSurface4 * p2 = textures[g_truecolortexture];
-		RECT r;
-		r.bottom = sd.dwHeight; r.top = 0; r.left = 0; r.right = sd.dwWidth;
-		DDBLTFX ddbltfx;
-		memset(&ddbltfx, 0, sizeof(ddbltfx));
-		ddbltfx.dwSize = sizeof(ddbltfx);
-		//ddbltfx.dwFillColor = 0x0FC1A004;
-		ddbltfx.dwFillColor = 0;
-		//ddbltfx.dwFillColor = 0x007F7F7F;
-		if(p2->IsLost()) p2->Restore();
-		p2->Blt(NULL, NULL, NULL, DDBLT_COLORFILL | DDBLT_WAIT, &ddbltfx);
-		p2->BltFast(0, 0, p, &r, sd.dwFlags & DDSD_CKSRCBLT ? DDBLTFAST_SRCCOLORKEY : DDBLTFAST_NOCOLORKEY);
-		if(g_gameviewtexture)
-			g_gameviewtexture->Release();
-		g_gameviewtexture = lpTexture;
-		g_gameviewtexture->AddRef();
-		lpTexture = g_truecolortexture;
 	}
 	HRESULT ret = ofn(ppvOut, dwStage, lpTexture);
 	//if(g_truecolortexture) {g_truecolortexture->AddRef();Log("tct refcnt C: %ld\n", g_truecolortexture->Release());}
