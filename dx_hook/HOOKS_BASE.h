@@ -79,6 +79,9 @@ public:
 
 extern BOOL g_binkActive;
 extern LPDIRECTDRAWSURFACE4 g_decoyBackBuffer;
+extern DWORD g_decoyBackLockFlags;
+extern LPDIRECTDRAWSURFACE4 g_decoyFrontBuffer;
+extern DWORD g_decoyFrontLockFlags;
 extern LPVOID g_binkStruct;
 extern CVIEWPORT g_currentviewport;
 extern std::map<LPDIRECT3DTEXTURE2, LPDIRECTDRAWSURFACE4> textures;

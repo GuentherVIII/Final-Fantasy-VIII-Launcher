@@ -22,6 +22,9 @@ along with Final Fantasy VII Launcher.  If not, see <http://www.gnu.org/licenses
 
 BOOL g_binkActive = FALSE;
 LPDIRECTDRAWSURFACE4 g_decoyBackBuffer;
+DWORD g_decoyBackLockFlags;
+LPDIRECTDRAWSURFACE4 g_decoyFrontBuffer;
+DWORD g_decoyFrontLockFlags;
 LPVOID g_binkStruct = NULL;
 CVIEWPORT g_currentviewport = { 0, 0, 0, 0, 0, 0, 0, 0 };
 std::map<LPDIRECT3DTEXTURE2, LPDIRECTDRAWSURFACE4> textures;

@@ -541,42 +541,56 @@ HRESULT __stdcall DDRAWSURFACE4_HOOK_Lock(LPVOID *ppvOut, LPRECT lpDestRect, LPD
 	// Luckily, this appears to be only used for videos, where simple upscaling is the only option anyway.
 	if (g_config.displaymode && lpDDSurfaceDesc) {
 		((IDirectDrawSurface4 *)ppvOut)->GetSurfaceDesc(lpDDSurfaceDesc);
-		if(lpDDSurfaceDesc->dwWidth == displaymode_options[g_config.displaymode].resX &&
-		   lpDDSurfaceDesc->dwHeight == displaymode_options[g_config.displaymode].resY &&
-		   (lpDDSurfaceDesc->ddsCaps.dwCaps & DDSCAPS_BACKBUFFER)) {
+		DDSURFACEDESC2 & sd = *lpDDSurfaceDesc;
+		LPDIRECTDRAWSURFACE4 * ppDecoySurface = 0;
+		if(sd.dwWidth == displaymode_options[g_config.displaymode].resX &&
+		   sd.dwHeight == displaymode_options[g_config.displaymode].resY &&
+		   (sd.ddsCaps.dwCaps & DDSCAPS_BACKBUFFER)) {
+			ppDecoySurface = &g_decoyBackBuffer;
+			g_decoyBackLockFlags = dwFlags;
 			Log("Backbuffer locking: substitute decoy surface\n");
+		}
+		if(sd.dwWidth == displaymode_options[g_config.displaymode].resX &&
+		   sd.dwHeight == displaymode_options[g_config.displaymode].resY &&
+		   (sd.ddsCaps.dwCaps & DDSCAPS_PRIMARYSURFACE)) {
+			ppDecoySurface = &g_decoyFrontBuffer;
+			g_decoyFrontLockFlags = dwFlags;
+			Log("Frontbuffer locking: substitute decoy surface\n");
+		}
+		if(ppDecoySurface) {
 			DDSURFACEDESC2 ddsd;
 			memset(&ddsd, 0, sizeof(DDSURFACEDESC2));
 			ddsd.dwSize = sizeof(ddsd);
-			if(g_decoyBackBuffer == NULL) {
+			if((*ppDecoySurface) == NULL) {
 				LPDIRECTDRAW4 lpDD = NULL;
 				ddsd.dwFlags = DDSD_CAPS | DDSD_WIDTH | DDSD_HEIGHT;
 				ddsd.dwWidth = 640;
 				ddsd.dwHeight = 480;
 				ddsd.ddsCaps.dwCaps = DDSCAPS_3DDEVICE | DDSCAPS_OFFSCREENPLAIN;
 				((IDirectDrawSurface4 *)ppvOut)->GetDDInterface((LPVOID *)&lpDD);
-				lpDD->CreateSurface(&ddsd, &g_decoyBackBuffer, NULL);
+				lpDD->CreateSurface(&ddsd, ppDecoySurface, NULL);
 				SAFE_RELEASE(lpDD);
 			}
-			if(g_decoyBackBuffer->IsLost())
-				g_decoyBackBuffer->Restore();
+			if((*ppDecoySurface)->IsLost())
+				(*ppDecoySurface)->Restore();
 			RECT rcDest, rcSource;
 			if(lpDDSurfaceDesc->dwHeight >= g_game.height) {
 				rcSource.top = (lpDDSurfaceDesc->dwHeight - g_game.height)/2; rcSource.bottom = lpDDSurfaceDesc->dwHeight - rcSource.top;
 				rcDest.top = 0; rcDest.bottom = 480;
 			} else {
 				rcSource.top = 0; rcSource.bottom = lpDDSurfaceDesc->dwHeight;
-				rcDest.top = (g_game.height - lpDDSurfaceDesc->dwHeight) / (2 * g_game.modY); rcDest.bottom = 480 - rcDest.top;
+				rcDest.top = (LONG)((g_game.height - lpDDSurfaceDesc->dwHeight) / (2 * g_game.modY)); rcDest.bottom = 480 - rcDest.top;
 			}
 			if(lpDDSurfaceDesc->dwWidth >= g_game.width) {
 				rcSource.left = (lpDDSurfaceDesc->dwWidth - g_game.width)/2; rcSource.right = lpDDSurfaceDesc->dwWidth - rcSource.left;
 				rcDest.left = 0; rcDest.right = 640;
 			} else {
 				rcSource.left = 0; rcSource.right = lpDDSurfaceDesc->dwWidth;
-				rcDest.left = (g_game.width - lpDDSurfaceDesc->dwWidth) / (2 * g_game.modX); rcDest.bottom = 640 - rcDest.left;
+				rcDest.left = (LONG)((g_game.width - lpDDSurfaceDesc->dwWidth) / (2 * g_game.modX)); rcDest.bottom = 640 - rcDest.left;
 			}
-			g_decoyBackBuffer->Blt(&rcDest, (IDirectDrawSurface4 *)ppvOut, &rcSource, DDBLT_WAIT, NULL);
-			HRESULT ret = g_decoyBackBuffer->Lock(0, &ddsd, DDLOCK_NOSYSLOCK | DDLOCK_WAIT, 0);
+			if(~dwFlags & DDLOCK_WRITEONLY)
+				(*ppDecoySurface)->Blt(&rcDest, (IDirectDrawSurface4 *)ppvOut, &rcSource, DDBLT_WAIT, NULL);
+			HRESULT ret = (*ppDecoySurface)->Lock(0, &ddsd, dwFlags | DDLOCK_WAIT, 0);
 			lpDDSurfaceDesc->dwWidth = ddsd.dwWidth;
 			lpDDSurfaceDesc->dwHeight = ddsd.dwHeight;
 			lpDDSurfaceDesc->lPitch = ddsd.lPitch;
@@ -705,27 +719,41 @@ HRESULT __stdcall DDRAWSURFACE4_HOOK_Unlock(LPVOID *ppvOut, LPRECT lpRect) {
 		memset(&sd, 0, sizeof(DDSURFACEDESC2));
 		sd.dwSize = sizeof(sd);
 		((IDirectDrawSurface4 *)ppvOut)->GetSurfaceDesc(&sd);
+		LPDIRECTDRAWSURFACE4 * ppDecoySurface = 0;
+		DWORD dwLockFlags = 0;
 		if(sd.dwWidth == displaymode_options[g_config.displaymode].resX &&
 		   sd.dwHeight == displaymode_options[g_config.displaymode].resY &&
 		   (sd.ddsCaps.dwCaps & DDSCAPS_BACKBUFFER)) {
+			ppDecoySurface = &g_decoyBackBuffer;
+			dwLockFlags = g_decoyBackLockFlags;
 			Log("Backbuffer unlocking: Rescaling surface... (hopefully with a Bink video)\n");
+		}
+		if(sd.dwWidth == displaymode_options[g_config.displaymode].resX &&
+		   sd.dwHeight == displaymode_options[g_config.displaymode].resY &&
+		   (sd.ddsCaps.dwCaps & DDSCAPS_PRIMARYSURFACE)) {
+			ppDecoySurface = &g_decoyFrontBuffer;
+			dwLockFlags = g_decoyFrontLockFlags;
+			Log("Frontbuffer unlocking: Rescaling surface...\n");
+		}
+		if(ppDecoySurface) {
 			RECT rcDest, rcSource;
 			if(sd.dwHeight >= g_game.height) {
 				rcSource.top = 0; rcSource.bottom = 480;
 				rcDest.top = (sd.dwHeight - g_game.height) / 2; rcDest.bottom = sd.dwHeight - rcDest.top;
 			} else {
-				rcSource.top = (g_game.height - sd.dwHeight) / (2 * g_game.modY); rcSource.bottom = 480 - rcSource.top;
+				rcSource.top = (LONG)((g_game.height - sd.dwHeight) / (2 * g_game.modY)); rcSource.bottom = 480 - rcSource.top;
 				rcDest.top = 0; rcDest.bottom = sd.dwHeight;
 			}
 			if(sd.dwWidth >= g_game.width) {
 				rcSource.left = 0; rcSource.right = 640;
 				rcDest.left = (sd.dwWidth - g_game.width) / 2; rcDest.right = sd.dwWidth - rcDest.left;
 			} else {
-				rcSource.left = (g_game.width - sd.dwWidth) / (2 * g_game.modX); rcSource.bottom = 640 - rcSource.left;
+				rcSource.left = (LONG)((g_game.width - sd.dwWidth) / (2 * g_game.modX)); rcSource.bottom = 640 - rcSource.left;
 				rcDest.left = 0; rcDest.right = sd.dwWidth;
 			}
-			HRESULT ret = g_decoyBackBuffer->Unlock(0);
-			((IDirectDrawSurface4 *)ppvOut)->Blt(&rcDest, g_decoyBackBuffer, &rcSource, DDBLT_WAIT, NULL);
+			HRESULT ret = (*ppDecoySurface)->Unlock(0);
+			if(~dwLockFlags & DDLOCK_READONLY)
+				((IDirectDrawSurface4 *)ppvOut)->Blt(&rcDest, g_decoyBackBuffer, &rcSource, DDBLT_WAIT, NULL);
 			return ret;
 		}
 		if(/*(sd.ddpfPixelFormat.dwFlags & DDPF_ALPHAPIXELS) && */(sd.ddpfPixelFormat.dwFlags & DDPF_RGB) && g_lockedSurface == (LPDIRECTDRAWSURFACE4)ppvOut) {
