@@ -323,8 +323,8 @@ ddsCaps={ 0x00001800 (DDSCAPS_SYSTEMMEMORY | DDSCAPS_TEXTURE), 0000000000, 00000
 			ddsd.ddsCaps.dwCaps    = (lpDDSurfaceDesc->ddsCaps.dwCaps);
 			ddsd.ddsCaps.dwCaps &= ~(DDSCAPS_PRIMARYSURFACE);
 			ddsd.ddsCaps.dwCaps |= (DDSCAPS_OFFSCREENPLAIN);
-			ddsd.dwWidth           = 640;
-			ddsd.dwHeight          = 480;
+			ddsd.dwWidth           = displaymode_options[g_config.displaymode].resX;
+			ddsd.dwHeight          = displaymode_options[g_config.displaymode].resY;
 			//hRes = lpdd->lpVtbl->CreateSurface(lpdd, &ddsd, &lpddZBuffer,NULL);
 			hr = ((LPDIRECTDRAW4)ppvOut)->CreateSurface(&ddsd, &lpddsB, NULL);
 			if(FAILED(hr)) {
@@ -533,7 +533,8 @@ HRESULT __stdcall DDRAW4_HOOK_SetCooperativeLevel(LPVOID *ppvOut, HWND hWnd, DWO
 	style |= (WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX);
 
 	SetWindowLong(hWnd, GWL_STYLE, style);
-	SetWindowPos(hWnd, HWND_TOP, 100, 100, 0, 0, SWP_NOSIZE);
+	//SetWindowPos(hWnd, HWND_TOP, 100, 100, 0, 0, SWP_NOSIZE);
+	SetWindowPos(hWnd, HWND_TOP, 0, 0, displaymode_options[g_config.displaymode].resX, displaymode_options[g_config.displaymode].resY, /*SWP_NOZORDER | SWP_NOOWNERZORDER |*/ SWP_NOMOVE | SWP_NOCOPYBITS | SWP_FRAMECHANGED);
 
 	hWnd = NULL; //windowed mode
 #endif
