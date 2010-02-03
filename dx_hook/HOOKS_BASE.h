@@ -33,8 +33,6 @@ along with Final Fantasy VII Launcher.  If not, see <http://www.gnu.org/licenses
 #include "flags.h"
 #include "../FF8_Launcher/config.h"
 
-//#define FF8_WINDOWED //Old, before resolutions, does not work/for reference.
-
 #define SAFE_RELEASE(p) { if (p) { (p)->Release(); (p)=NULL; } }
 
 struct SVTBL_HOOK {
@@ -76,6 +74,10 @@ public:
 		}
 	}
 };
+
+extern HWND g_hwnd;
+extern LPDIRECTDRAWSURFACE4 g_frontbuffer;
+extern LPDIRECTDRAWSURFACE4 g_backbuffer;
 
 extern BOOL g_binkActive;
 extern LPDIRECTDRAWSURFACE4 g_decoyBackBuffer;

@@ -27,12 +27,6 @@ along with Final Fantasy VII Launcher.  If not, see <http://www.gnu.org/licenses
 #include "apihijack.h"
 #include "HOOKS_BASE.h"
 
-#ifdef FF8_WINDOWED
-extern HWND g_hwnd;
-extern LPDIRECTDRAWSURFACE4 g_frontbuffer;
-extern LPDIRECTDRAWSURFACE4 g_backbuffer;
-#endif
-
 extern SVTBL_HOOK ddraw4_hooks[];
 extern const unsigned int count_ddraw4_hooks;
 extern bool ishooked_ddraw4_hooks;

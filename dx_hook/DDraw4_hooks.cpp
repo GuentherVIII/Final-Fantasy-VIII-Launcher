@@ -24,12 +24,6 @@ along with Final Fantasy VII Launcher.  If not, see <http://www.gnu.org/licenses
 #include "ddrawsurface4_hooks.h"
 #include <map>
 
-#ifdef FF8_WINDOWED
-HWND g_hwnd = NULL;
-LPDIRECTDRAWSURFACE4 g_frontbuffer = NULL;
-LPDIRECTDRAWSURFACE4 g_backbuffer = NULL;
-#endif
-
 //{ NULL, 0, NULL, NULL },	//
 #ifdef _DEBUG
 SVTBL_HOOK ddraw4_hooks[] = {
@@ -193,71 +187,15 @@ HRESULT __stdcall DDRAW4_HOOK_CreateSurface(LPVOID *ppvOut, LPDDSURFACEDESC2 lpD
 			lpDDSurfaceDesc->ddckCKSrcBlt.dwColorSpaceHighValue = 0x000000;
 		}
 	}
-
-#ifdef FF8_WINDOWED
-	if((void *)lpDDSurfaceDesc == (void *)0x00134658) {
+	
+	// FIXME: look at the flags instead of hardcoding an address
+	// if(lpDDSurfaceDesc->ddsCaps.dwCaps & DDSCAPS_PRIMARYSURFACE) {
+	if(!g_config.fullscreen && (void *)lpDDSurfaceDesc == (void *)0x00134658) {
 		Log("IF[lpDDSurfaceDesc == 0x00134658] THEN\n");
 		lpDDSurfaceDesc->dwFlags &= ~(DDSD_BACKBUFFERCOUNT);
-		//lpDDSurfaceDesc->dwFlags |= (DDSD_WIDTH | DDSD_HEIGHT);
-		lpDDSurfaceDesc->dwWidth = 0;
-		lpDDSurfaceDesc->dwHeight = 0;
 		lpDDSurfaceDesc->dwBackBufferCount = 0;
-		lpDDSurfaceDesc->ddsCaps.dwCaps &= ~(DDSCAPS_COMPLEX | DDSCAPS_FLIP | DDSCAPS_PRIMARYSURFACE );
-		lpDDSurfaceDesc->ddsCaps.dwCaps |= (DDSCAPS_PRIMARYSURFACE);
-	} /*else if((lpDDSurfaceDesc->ddsCaps.dwCaps & (DDSCAPS_ALLOCONLOAD | DDSCAPS_TEXTURE)) && (lpDDSurfaceDesc->dwFlags & DDSD_PIXELFORMAT) && (lpDDSurfaceDesc->ddpfPixelFormat.dwFlags & DDPF_ALPHAPIXELS) && lpDDSurfaceDesc->ddpfPixelFormat.dwRBitMask == 0x7c00 && lpDDSurfaceDesc->ddpfPixelFormat.dwGBitMask == 0x3e0 && lpDDSurfaceDesc->ddpfPixelFormat.dwBBitMask == 0x1f) {
-		lpDDSurfaceDesc->ddpfPixelFormat.dwFlags &= ~(DDPF_ALPHAPIXELS);
-		lpDDSurfaceDesc->ddpfPixelFormat.dwRGBAlphaBitMask =
-			lpDDSurfaceDesc->ddpfPixelFormat.dwYUVAlphaBitMask =
-			lpDDSurfaceDesc->ddpfPixelFormat.dwLuminanceAlphaBitMask = 
-			lpDDSurfaceDesc->ddpfPixelFormat.dwRGBZBitMask = 
-			lpDDSurfaceDesc->ddpfPixelFormat.dwYUVZBitMask = 0x00;
-	//Does not work: Crash in battle swirl
-	}*/ /*else if((lpDDSurfaceDesc->ddsCaps.dwCaps & (DDSCAPS_SYSTEMMEMORY | DDSCAPS_TEXTURE)) && (lpDDSurfaceDesc->dwFlags & DDSD_PIXELFORMAT) && (lpDDSurfaceDesc->ddpfPixelFormat.dwFlags & DDPF_ALPHAPIXELS) && lpDDSurfaceDesc->ddpfPixelFormat.dwRGBBitCount == 0x020) {
-		lpDDSurfaceDesc->ddpfPixelFormat.dwFlags &= ~(DDPF_ALPHAPIXELS);
-		lpDDSurfaceDesc->ddpfPixelFormat.dwRGBBitCount =
-			lpDDSurfaceDesc->ddpfPixelFormat.dwYUVBitCount =
-			lpDDSurfaceDesc->ddpfPixelFormat.dwZBufferBitDepth =
-			lpDDSurfaceDesc->ddpfPixelFormat.dwAlphaBitDepth =
-			lpDDSurfaceDesc->ddpfPixelFormat.dwLuminanceBitCount =
-			lpDDSurfaceDesc->ddpfPixelFormat.dwBumpBitCount = 0x10;
-		lpDDSurfaceDesc->ddpfPixelFormat.dwRBitMask =
-			lpDDSurfaceDesc->ddpfPixelFormat.dwYBitMask =
-			lpDDSurfaceDesc->ddpfPixelFormat.dwStencilBitDepth =
-			lpDDSurfaceDesc->ddpfPixelFormat.dwLuminanceBitMask =
-			lpDDSurfaceDesc->ddpfPixelFormat.dwBumpDuBitMask = 0xf800;
-		lpDDSurfaceDesc->ddpfPixelFormat.dwGBitMask =
-			lpDDSurfaceDesc->ddpfPixelFormat.dwUBitMask =
-			lpDDSurfaceDesc->ddpfPixelFormat.dwZBitMask =
-			lpDDSurfaceDesc->ddpfPixelFormat.dwBumpDvBitMask = 0x7e0;
-		lpDDSurfaceDesc->ddpfPixelFormat.dwBBitMask =
-			lpDDSurfaceDesc->ddpfPixelFormat.dwVBitMask =
-			lpDDSurfaceDesc->ddpfPixelFormat.dwStencilBitMask =
-			lpDDSurfaceDesc->ddpfPixelFormat.dwBumpLuminanceBitMask = 0x1f;
-		lpDDSurfaceDesc->ddpfPixelFormat.dwRGBAlphaBitMask =
-			lpDDSurfaceDesc->ddpfPixelFormat.dwYUVAlphaBitMask =
-			lpDDSurfaceDesc->ddpfPixelFormat.dwLuminanceAlphaBitMask = 
-			lpDDSurfaceDesc->ddpfPixelFormat.dwRGBZBitMask = 
-			lpDDSurfaceDesc->ddpfPixelFormat.dwYUVZBitMask = 0x00;
-	}*/
-
-/*
-16BIT
-->lpDDSurfaceDesc { dwSize=0x0000007c, dwFlags=0x00001007 (DDSD_CAPS | DDSD_HEIGHT | DDSD_PIXELFORMAT | DDSD_WIDTH), dwWidth=0x00000100 (256), dwHeight=0x00000100 (256), lPitch=0000000000 , dwLinearSize=0000000000, dwBackBufferCount=0000000000, dwMipMapCount=0000000000, dwRefreshRate=0000000000, dwAlphaBitDepth=0000000000, dwReserved=0000000000,
-lpSurface=0000000000, ddckCKDestOverlay={ 0000000000, 0000000000 }, ddckCKDestBlt={ 0000000000, 0000000000 }, ddckCKSrcOverlay={ 0000000000, 0000000000 }, ddckCKSrcBlt={ 0000000000, 0000000000 },
-ddpfPixelFormat={ dwSize=0x00000020, dwFlags=0x00000040 (DDPF_RGB), dwFourCC=0000000000, dwRGBBitCount=0x00000010, dwYUVBitCount=0x00000010, dwZBufferBitDepth=0x00000010, dwAlphaBitDepth=0x00000010, dwLuminanceBitCount=0x00000010, dwBumpBitCount=0x00000010, dwRBitMask=0x0000f800,
-dwYBitMask=0x0000f800, dwStencilBitDepth=0x0000f800, dwLuminanceBitMask=0x0000f800, dwBumpDuBitMask=0x0000f800, dwGBitMask=0x000007e0, dwUBitMask=0x000007e0, dwZBitMask=0x000007e0, dwBumpDvBitMask=0x000007e0, dwBBitMask=0x0000001f, dwVBitMask=0x0000001f, dwStencilBitMask=0x0000001f,
-dwBumpLuminanceBitMask=0x0000001f, dwRGBAlphaBitMask=0000000000, dwYUVAlphaBitMask=0000000000, dwLuminanceAlphaBitMask=0000000000, dwRGBZBitMask=0000000000, dwYUVZBitMask=0000000000 },
-ddsCaps={ 0x00001800 (DDSCAPS_SYSTEMMEMORY | DDSCAPS_TEXTURE), 0000000000, 0000000000, 0000000000 }, dwTextureStage=0000000000 }
-
-32BIT
-->lpDDSurfaceDesc { dwSize=0x0000007c, dwFlags=0x00001007 (DDSD_CAPS | DDSD_HEIGHT | DDSD_PIXELFORMAT | DDSD_WIDTH), dwWidth=0x00000100 (256), dwHeight=0x00000100 (256), lPitch=0000000000 , dwLinearSize=0000000000, dwBackBufferCount=0000000000, dwMipMapCount=0000000000, dwRefreshRate=0000000000, dwAlphaBitDepth=0000000000, dwReserved=0000000000,
-lpSurface=0000000000, ddckCKDestOverlay={ 0000000000, 0000000000 }, ddckCKDestBlt={ 0000000000, 0000000000 }, ddckCKSrcOverlay={ 0000000000, 0000000000 }, ddckCKSrcBlt={ 0000000000, 0000000000 },
-ddpfPixelFormat={ dwSize=0x00000020, dwFlags=0x00000041 (DDPF_ALPHAPIXELS | DDPF_RGB), dwFourCC=0000000000, dwRGBBitCount=0x00000020, dwYUVBitCount=0x00000020, dwZBufferBitDepth=0x00000020, dwAlphaBitDepth=0x00000020, dwLuminanceBitCount=0x00000020, dwBumpBitCount=0x00000020, dwRBitMask=0x00ff0000,
-dwYBitMask=0x00ff0000, dwStencilBitDepth=0x00ff0000, dwLuminanceBitMask=0x00ff0000, dwBumpDuBitMask=0x00ff0000, dwGBitMask=0x0000ff00, dwUBitMask=0x0000ff00, dwZBitMask=0x0000ff00, dwBumpDvBitMask=0x0000ff00, dwBBitMask=0x000000ff, dwVBitMask=0x000000ff, dwStencilBitMask=0x000000ff,
-dwBumpLuminanceBitMask=0x000000ff, dwRGBAlphaBitMask=0xff000000, dwYUVAlphaBitMask=0xff000000, dwLuminanceAlphaBitMask=0xff000000, dwRGBZBitMask=0xff000000, dwYUVZBitMask=0xff000000 },
-ddsCaps={ 0x00001800 (DDSCAPS_SYSTEMMEMORY | DDSCAPS_TEXTURE), 0000000000, 0000000000, 0000000000 }, dwTextureStage=0000000000 }
-*/
-#endif
+		lpDDSurfaceDesc->ddsCaps.dwCaps &= ~(DDSCAPS_COMPLEX | DDSCAPS_FLIP);
+	}
 
 	DDRAW4_CreateSurface_Type ofn = (DDRAW4_CreateSurface_Type)ddraw4_hooks[hpos].oldFunc;
 	HRESULT ret = ofn(ppvOut, lpDDSurfaceDesc, lplpDDSurface4, pUnkOuter);
@@ -297,8 +235,7 @@ ddsCaps={ 0x00001800 (DDSCAPS_SYSTEMMEMORY | DDSCAPS_TEXTURE), 0000000000, 00000
 		ishooked_ddrawsurface4_hooks = true;
 	}
 
-#ifdef FF8_WINDOWED
-	if((void *)lpDDSurfaceDesc == (void *)0x00134658) {
+	if(!g_config.fullscreen && (void *)lpDDSurfaceDesc == (void *)0x00134658) {
 		Log("IF[lpDDSurfaceDesc == 0x00134658] THEN\n");
 		if(SUCCEEDED(ret)) {
 
@@ -330,28 +267,11 @@ ddsCaps={ 0x00001800 (DDSCAPS_SYSTEMMEMORY | DDSCAPS_TEXTURE), 0000000000, 00000
 			if(FAILED(hr)) {
 				Log("ERROR: Failed to create WINDOWED backbuffer!");
 			} else {
-				//hr = (*lplpDDSurface4)->AddAttachedSurface(lpddsB);
-				//if(FAILED(hr)) {
-				//	Log("ERROR: Failed to attach WINDOWED backbuffer to frontbuffer!");
-				//} else {
-					g_frontbuffer = (*lplpDDSurface4);
-					g_backbuffer = lpddsB;
-					/*hr = ((LPDIRECTDRAW4)ppvOut)->CreateSurface(&ddsd, &lpddsZ, NULL);
-					if(FAILED(hr)) {
-						Log("ERROR: Failed to create WINDOWED z-buffer!");
-					} else {
-						hr = lpddsB->AddAttachedSurface(lpddsZ);
-						if(FAILED(hr)) {
-							Log("ERROR: Failed to attach WINDOWED z-buffer to backbuffer!");
-						} else {
-							
-						}
-					}*/
-				//}
+				g_frontbuffer = (*lplpDDSurface4);
+				g_backbuffer = lpddsB;
 			}
 		}
 	}
-#endif
 
 	return ret;
 }
@@ -515,29 +435,29 @@ HRESULT __stdcall DDRAW4_HOOK_RestoreDisplayMode(LPVOID *ppvOut) {
 HRESULT __stdcall DDRAW4_HOOK_SetCooperativeLevel(LPVOID *ppvOut, HWND hWnd, DWORD dwFlags) {
 	const unsigned int hpos = 20;
 
-#ifdef FF8_WINDOWED
-	dwFlags &= ~(DDSCL_FULLSCREEN | DDSCL_EXCLUSIVE);
-	dwFlags |= DDSCL_NORMAL;
+	if(!g_config.fullscreen) {
+		dwFlags &= ~(DDSCL_FULLSCREEN | DDSCL_EXCLUSIVE);
+		dwFlags |= DDSCL_NORMAL;
 
-	g_hwnd = hWnd;
-	DWORD style = (DWORD)GetWindowLong(hWnd, GWL_STYLE);
-	/*DWORD exstyle = (DWORD)GetWindowLong(hWnd, GWL_EXSTYLE);
+		g_hwnd = hWnd;
+		DWORD style = (DWORD)GetWindowLong(hWnd, GWL_STYLE);
+		/*DWORD exstyle = (DWORD)GetWindowLong(hWnd, GWL_EXSTYLE);
+		char style_buffer[LOGBUFFER_MAX], exstyle_buffer[LOGBUFFER_MAX];
+		FlagsToString(FLAGS_WS, CFLAGS_WS, style, (char *)&style_buffer, LOGBUFFER_MAX);
+		FlagsToString(FLAGS_WS_EX, CFLAGS_WS_EX, exstyle, (char *)&exstyle_buffer, LOGBUFFER_MAX);
+		Log("WINDOW STYLE: %s\nWINDOW EX STYLE: %s\n", style_buffer, exstyle_buffer);*/
 
-	char style_buffer[LOGBUFFER_MAX], exstyle_buffer[LOGBUFFER_MAX];
-	FlagsToString(FLAGS_WS, CFLAGS_WS, style, (char *)&style_buffer, LOGBUFFER_MAX);
-	FlagsToString(FLAGS_WS_EX, CFLAGS_WS_EX, exstyle, (char *)&exstyle_buffer, LOGBUFFER_MAX);
-	
-	Log("WINDOW STYLE: %s\nWINDOW EX STYLE: %s\n", style_buffer, exstyle_buffer);*/
+		style &= ~(WS_POPUP);
+		style |= (WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX);
 
-	style &= ~(WS_POPUP);
-	style |= (WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX);
+		SetWindowLong(hWnd, GWL_STYLE, style);
+		//SetWindowPos(hWnd, HWND_TOP, 100, 100, 0, 0, SWP_NOSIZE);
+		SetWindowPos(hWnd, HWND_TOP,
+			0, 0, displaymode_options[g_config.displaymode].resX, displaymode_options[g_config.displaymode].resY,
+			/*SWP_NOZORDER | SWP_NOOWNERZORDER |*/ SWP_NOMOVE | SWP_NOCOPYBITS | SWP_FRAMECHANGED);
 
-	SetWindowLong(hWnd, GWL_STYLE, style);
-	//SetWindowPos(hWnd, HWND_TOP, 100, 100, 0, 0, SWP_NOSIZE);
-	SetWindowPos(hWnd, HWND_TOP, 0, 0, displaymode_options[g_config.displaymode].resX, displaymode_options[g_config.displaymode].resY, /*SWP_NOZORDER | SWP_NOOWNERZORDER |*/ SWP_NOMOVE | SWP_NOCOPYBITS | SWP_FRAMECHANGED);
-
-	hWnd = NULL; //windowed mode
-#endif
+		hWnd = NULL; //windowed mode
+	}
 
 	DDRAW4_SetCooperativeLevel_Type ofn = (DDRAW4_SetCooperativeLevel_Type)ddraw4_hooks[hpos].oldFunc;
 	HRESULT ret = ofn(ppvOut, hWnd, dwFlags);
@@ -557,13 +477,12 @@ HRESULT __stdcall DDRAW4_HOOK_SetDisplayMode(LPVOID *ppvOut, DWORD dwWidth, DWOR
 		dwBPP = displaymode_options[g_config.displaymode].bpp;
 	}
 
-#ifndef FF8_WINDOWED
-	DDRAW4_SetDisplayMode_Type ofn = (DDRAW4_SetDisplayMode_Type)ddraw4_hooks[hpos].oldFunc;
-	HRESULT ret = ofn(ppvOut, dwWidth, dwHeight, dwBPP, dwRefreshRate, dwFlags);
-	LogDXError(ret);
-#else
 	HRESULT ret = S_OK;
-#endif
+	if(g_config.fullscreen) {
+		DDRAW4_SetDisplayMode_Type ofn = (DDRAW4_SetDisplayMode_Type)ddraw4_hooks[hpos].oldFunc;
+		HRESULT ret = ofn(ppvOut, dwWidth, dwHeight, dwBPP, dwRefreshRate, dwFlags);
+		LogDXError(ret);
+	}
 
 	Log("IDirectDraw4::%s(this=%#010lx, dwWidth=%#010lx (%d), dwHeight=%#010lx (%d), dwBPP=%#010lx (%d), dwRefreshRate=%#010lx (%d), dwFlags=%#010lx)\n", ddraw4_hooks[hpos].name, ppvOut, dwWidth, dwWidth, dwHeight, dwHeight, dwBPP, dwBPP, dwRefreshRate, dwRefreshRate, dwFlags);
 

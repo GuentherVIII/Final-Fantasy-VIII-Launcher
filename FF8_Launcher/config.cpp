@@ -80,6 +80,9 @@ int LoadConfig(FF8Config &cfg) {
 				//8-bit Paletted Textures
 				} else if(_tcscmp(_T("8bit_paletted_textures_fix"), buffer) == 0) {
 					cfg.b8_paletted_textures_fix = parseInt(val);
+				//Fullscreen
+				} else if(_tcscmp(_T("fullscreen"), buffer) == 0) {
+					cfg.fullscreen = parseInt(val);
 				//Force Linear Texture Filtering
 				} else if(_tcscmp(_T("force_texture_filtering"), buffer) == 0) {
 					cfg.force_texture_filtering = parseInt(val);
@@ -116,6 +119,7 @@ int SaveConfig(FF8Config &cfg) {
 	if(ofs) {
 		ofs << "displaymode=" << cfg.displaymode << "\n";
 		ofs << "fsaa=" << cfg.fsaa << "\n";
+		ofs << "fullscreen=" << cfg.fullscreen << "\n";
 		ofs << "8bit_paletted_textures_fix=" << cfg.b8_paletted_textures_fix << "\n";
 		ofs << "force_texture_filtering=" << cfg.force_texture_filtering << "\n";
 		ofs << "force_alpha_transparency=" << cfg.force_alpha_transparency << "\n";

@@ -132,6 +132,7 @@ LRESULT CALLBACK InterfaceProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lP
 		g_hwndInterface = hwnd;
 
 		memset(&g_config, 0, sizeof(g_config));
+		g_config.fullscreen = TRUE;
 		LoadConfig(g_config);
 
 		//Populate controls
@@ -146,6 +147,9 @@ LRESULT CALLBACK InterfaceProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lP
 			ComboBox_AddString(hwndFSAA, fsaa_options[i].name);
 		}
 		ComboBox_SetCurSel(hwndFSAA, g_config.fsaa);
+
+		Button_SetCheck(GetDlgItem(g_hwndInterface, IDC_FULLSCREEN),
+			(g_config.fullscreen ? BST_CHECKED : BST_UNCHECKED));
 
 		Button_SetCheck(GetDlgItem(g_hwndInterface, IDC_8BITPFIX),
 			(g_config.b8_paletted_textures_fix ? BST_CHECKED : BST_UNCHECKED));
@@ -181,6 +185,11 @@ LRESULT CALLBACK InterfaceProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lP
 
 		case IDC_DDFSAA:
 			g_config.fsaa = ComboBox_GetCurSel(GetDlgItem(g_hwndInterface, IDC_DDFSAA));
+			SaveConfig(g_config);
+			return TRUE;
+
+		case IDC_FULLSCREEN:
+			g_config.fullscreen = Button_GetCheck(GetDlgItem(g_hwndInterface, IDC_FULLSCREEN)) == BST_CHECKED;
 			SaveConfig(g_config);
 			return TRUE;
 

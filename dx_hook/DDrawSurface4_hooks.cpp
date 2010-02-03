@@ -263,9 +263,8 @@ HRESULT __stdcall DDRAWSURFACE4_HOOK_EnumOverlayZOrders(LPVOID *ppvOut, DWORD dw
 HRESULT __stdcall DDRAWSURFACE4_HOOK_Flip(LPVOID *ppvOut, LPDIRECTDRAWSURFACE4 lpDDSurfaceTargetOverride, DWORD dwFlags) {
 	const unsigned int hpos = 11;
 
-#ifdef FF8_WINDOWED
-	HRESULT ret = 0;
-	if(((LPDIRECTDRAWSURFACE4)ppvOut) == g_frontbuffer) {
+	HRESULT ret;
+	if(!g_config.fullscreen && ((LPDIRECTDRAWSURFACE4)ppvOut) == g_frontbuffer) {
 		RECT rect;
 		POINT p1, p2;
 		GetClientRect(g_hwnd, &rect);
@@ -288,45 +287,39 @@ HRESULT __stdcall DDRAWSURFACE4_HOOK_Flip(LPVOID *ppvOut, LPDIRECTDRAWSURFACE4 l
 		Log("BLIT FLIP\n");
 	} else {
 		DDRAWSURFACE4_Flip_Type ofn = (DDRAWSURFACE4_Flip_Type)ddrawsurface4_hooks[hpos].oldFunc;
-		ret = ofn(ppvOut, lpDDSurfaceTargetOverride, dwFlags);
+		HRESULT ret = ofn(ppvOut, lpDDSurfaceTargetOverride, dwFlags);
+		LogDXError(ret);
 
 		Log("IDirectDrawSurface4::%s(this=%#010lx, lpDDSurfaceTargetOverride=%#010lx, dwFlags=%#010lx)\n", ddrawsurface4_hooks[hpos].name, ppvOut, lpDDSurfaceTargetOverride, dwFlags);
+		if(g_d3ddevice != NULL && g_binkActive == FALSE) {
+			LPDIRECT3DVIEWPORT3 lpVP = NULL;
+			D3DVIEWPORT2 d3dvp_old, d3dvp_new;
+			D3DRECT rect[4];
+			memset(&rect, 0, sizeof(rect));
+			memset(&d3dvp_old, 0, sizeof(d3dvp_old));
+			d3dvp_old.dwSize = sizeof(d3dvp_old);
+
+			((LPDIRECT3DDEVICE3)g_d3ddevice)->GetCurrentViewport(&lpVP);
+			lpVP->GetViewport2(&d3dvp_old);
+
+			memcpy(&d3dvp_new, &d3dvp_old, sizeof(d3dvp_new));
+			d3dvp_new.dwSize = 0; //special case for internal call
+			d3dvp_old.dwSize = 0;
+			d3dvp_new.dwX = d3dvp_new.dwY = 0;
+			d3dvp_new.dwWidth = displaymode_options[g_config.displaymode].resX;
+			d3dvp_new.dwHeight = displaymode_options[g_config.displaymode].resY;
+
+			lpVP->SetViewport2(&d3dvp_new);
+
+			SetD3DRect(rect[0], 0, displaymode_options[g_config.displaymode].resX, 0, g_currentviewport.y);
+			SetD3DRect(rect[1], 0, displaymode_options[g_config.displaymode].resX, g_currentviewport.y+g_game.height, displaymode_options[g_config.displaymode].resY);
+			SetD3DRect(rect[2], 0, g_currentviewport.x, 0, displaymode_options[g_config.displaymode].resY);
+			SetD3DRect(rect[3], g_currentviewport.x+g_game.width, displaymode_options[g_config.displaymode].resX, 0, displaymode_options[g_config.displaymode].resY);
+
+			lpVP->Clear2(4, (LPD3DRECT)&rect, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, 0x00000000, 0, 0);
+			lpVP->SetViewport2(&d3dvp_old);
+		}
 	}
-#else
-	DDRAWSURFACE4_Flip_Type ofn = (DDRAWSURFACE4_Flip_Type)ddrawsurface4_hooks[hpos].oldFunc;
-	HRESULT ret = ofn(ppvOut, lpDDSurfaceTargetOverride, dwFlags);
-	LogDXError(ret);
-
-	Log("IDirectDrawSurface4::%s(this=%#010lx, lpDDSurfaceTargetOverride=%#010lx, dwFlags=%#010lx)\n", ddrawsurface4_hooks[hpos].name, ppvOut, lpDDSurfaceTargetOverride, dwFlags);
-	if(g_d3ddevice != NULL && g_binkActive == FALSE) {
-		LPDIRECT3DVIEWPORT3 lpVP = NULL;
-		D3DVIEWPORT2 d3dvp_old, d3dvp_new;
-		D3DRECT rect[4];
-		memset(&rect, 0, sizeof(rect));
-		memset(&d3dvp_old, 0, sizeof(d3dvp_old));
-		d3dvp_old.dwSize = sizeof(d3dvp_old);
-
-		((LPDIRECT3DDEVICE3)g_d3ddevice)->GetCurrentViewport(&lpVP);
-		lpVP->GetViewport2(&d3dvp_old);
-
-		memcpy(&d3dvp_new, &d3dvp_old, sizeof(d3dvp_new));
-		d3dvp_new.dwSize = 0; //special case for internal call
-		d3dvp_old.dwSize = 0;
-		d3dvp_new.dwX = d3dvp_new.dwY = 0;
-		d3dvp_new.dwWidth = displaymode_options[g_config.displaymode].resX;
-		d3dvp_new.dwHeight = displaymode_options[g_config.displaymode].resY;
-
-		lpVP->SetViewport2(&d3dvp_new);
-
-		SetD3DRect(rect[0], 0, displaymode_options[g_config.displaymode].resX, 0, g_currentviewport.y);
-		SetD3DRect(rect[1], 0, displaymode_options[g_config.displaymode].resX, g_currentviewport.y+g_game.height, displaymode_options[g_config.displaymode].resY);
-		SetD3DRect(rect[2], 0, g_currentviewport.x, 0, displaymode_options[g_config.displaymode].resY);
-		SetD3DRect(rect[3], g_currentviewport.x+g_game.width, displaymode_options[g_config.displaymode].resX, 0, displaymode_options[g_config.displaymode].resY);
-
-		lpVP->Clear2(4, (LPD3DRECT)&rect, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, 0x00000000, 0, 0);
-		lpVP->SetViewport2(&d3dvp_old);
-	}
-#endif
 
 	return ret;
 }
@@ -334,12 +327,10 @@ HRESULT __stdcall DDRAWSURFACE4_HOOK_Flip(LPVOID *ppvOut, LPDIRECTDRAWSURFACE4 l
 HRESULT __stdcall DDRAWSURFACE4_HOOK_GetAttachedSurface(LPVOID *ppvOut, LPDDSCAPS2 lpDDSCaps, LPDIRECTDRAWSURFACE4 FAR *lplpDDAttachedSurface) {
 	const unsigned int hpos = 12;
 
-#ifdef FF8_WINDOWED
-	if(((LPDIRECTDRAWSURFACE4)ppvOut) == g_frontbuffer && (lpDDSCaps->dwCaps & DDSCAPS_BACKBUFFER) == DDSCAPS_BACKBUFFER) {
+	if(!g_config.fullscreen && ((LPDIRECTDRAWSURFACE4)ppvOut) == g_frontbuffer && (lpDDSCaps->dwCaps & DDSCAPS_BACKBUFFER) == DDSCAPS_BACKBUFFER) {
 		*lplpDDAttachedSurface = g_backbuffer;
 		return S_OK;
 	}
-#endif
 
 	DDRAWSURFACE4_GetAttachedSurface_Type ofn = (DDRAWSURFACE4_GetAttachedSurface_Type)ddrawsurface4_hooks[hpos].oldFunc;
 	HRESULT ret = ofn(ppvOut, lpDDSCaps, lplpDDAttachedSurface);
@@ -545,25 +536,19 @@ HRESULT __stdcall DDRAWSURFACE4_HOOK_Lock(LPVOID *ppvOut, LPRECT lpDestRect, LPD
 		// So the game is given a surface with the dimension it expects, and the wrapper will
 		// scale it up in the UnLock function.
 		// Luckily, this appears to be only used for videos, where simple upscaling is the only option anyway.
-#ifdef FF8_WINDOWED
-		if((LPDIRECTDRAWSURFACE4)ppvOut == g_backbuffer) {
-#else
-		if(sd.dwWidth == displaymode_options[g_config.displaymode].resX &&
+		if((!g_config.fullscreen && (LPDIRECTDRAWSURFACE4)ppvOut == g_backbuffer) ||
+		  (sd.dwWidth == displaymode_options[g_config.displaymode].resX &&
 		   sd.dwHeight == displaymode_options[g_config.displaymode].resY &&
-		   (sd.ddsCaps.dwCaps & DDSCAPS_BACKBUFFER)) {
-#endif
+		   (sd.ddsCaps.dwCaps & DDSCAPS_BACKBUFFER))) {
 			ppDecoySurface = &g_decoyBackBuffer;
 			g_decoyBackLockFlags = dwFlags;
 			Log("Backbuffer locking: substitute decoy surface\n");
 		}
 		// Similarily, the frontbuffer is read for special effects which also depend on the fixed size.
-#ifdef FF8_WINDOWED
-		if((LPDIRECTDRAWSURFACE4)ppvOut == g_frontbuffer) {
-#else
-		if(sd.dwWidth == displaymode_options[g_config.displaymode].resX &&
+		if((!g_config.fullscreen && (LPDIRECTDRAWSURFACE4)ppvOut == g_frontbuffer) ||
+		  (sd.dwWidth == displaymode_options[g_config.displaymode].resX &&
 		   sd.dwHeight == displaymode_options[g_config.displaymode].resY &&
-		   (sd.ddsCaps.dwCaps & DDSCAPS_PRIMARYSURFACE)) {
-#endif
+		   (sd.ddsCaps.dwCaps & DDSCAPS_PRIMARYSURFACE))) {
 			ppDecoySurface = &g_decoyFrontBuffer;
 			g_decoyFrontLockFlags = dwFlags;
 			Log("Frontbuffer locking: substitute decoy surface\n");
@@ -738,24 +723,18 @@ HRESULT __stdcall DDRAWSURFACE4_HOOK_Unlock(LPVOID *ppvOut, LPRECT lpRect) {
 		LPDIRECTDRAWSURFACE4 * ppDecoySurface = 0;
 		DWORD dwLockFlags = 0;
 
-#ifdef FF8_WINDOWED
-		if((LPDIRECTDRAWSURFACE4)ppvOut == g_backbuffer) {
-#else
-		if(sd.dwWidth == displaymode_options[g_config.displaymode].resX &&
+		if((!g_config.fullscreen && (LPDIRECTDRAWSURFACE4)ppvOut == g_backbuffer) ||
+		  (sd.dwWidth == displaymode_options[g_config.displaymode].resX &&
 		   sd.dwHeight == displaymode_options[g_config.displaymode].resY &&
-		   (sd.ddsCaps.dwCaps & DDSCAPS_BACKBUFFER)) {
-#endif
+		   (sd.ddsCaps.dwCaps & DDSCAPS_BACKBUFFER))) {
 			ppDecoySurface = &g_decoyBackBuffer;
 			dwLockFlags = g_decoyBackLockFlags;
 			Log("Backbuffer unlocking: Rescaling surface... (hopefully with a Bink video)\n");
 		}
-#ifdef FF8_WINDOWED
-		if((LPDIRECTDRAWSURFACE4)ppvOut == g_frontbuffer) {
-#else
-		if(sd.dwWidth == displaymode_options[g_config.displaymode].resX &&
+		if((!g_config.fullscreen && (LPDIRECTDRAWSURFACE4)ppvOut == g_frontbuffer) ||
+		  (sd.dwWidth == displaymode_options[g_config.displaymode].resX &&
 		   sd.dwHeight == displaymode_options[g_config.displaymode].resY &&
-		   (sd.ddsCaps.dwCaps & DDSCAPS_PRIMARYSURFACE)) {
-#endif
+		   (sd.ddsCaps.dwCaps & DDSCAPS_PRIMARYSURFACE))) {
 			ppDecoySurface = &g_decoyFrontBuffer;
 			dwLockFlags = g_decoyFrontLockFlags;
 			Log("Frontbuffer unlocking: Rescaling surface...\n");

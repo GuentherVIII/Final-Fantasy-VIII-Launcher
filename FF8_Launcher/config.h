@@ -32,21 +32,17 @@ along with Final Fantasy VII Launcher.  If not, see <http://www.gnu.org/licenses
 
 struct FF8Config {
 	UINT displaymode;
-	UINT fsaa;
-	UINT b8_paletted_textures_fix;
-	UINT force_texture_filtering;
-	UINT force_alpha_transparency;
-	UINT expert_mode;
+	BOOL fullscreen;
+	BOOL fsaa;
+	BOOL b8_paletted_textures_fix;
+	BOOL force_texture_filtering;
+	BOOL force_alpha_transparency;
+	BOOL expert_mode;
 	float tex_uvmap_adj_backgrounds;
 	float tex_uvmap_adj_interface;
-	UINT stretch_4_3_ar;
-	UINT eliminate_black_bars;
+	BOOL stretch_4_3_ar;
+	BOOL eliminate_black_bars;
 };
-
-//not used (delete?)
-#define FF8CONFIG_WS_NORMAL 0
-#define FF8CONFIG_WS_16_10 1
-#define FF8CONFIG_WS_16_9 2
 
 struct FF8Config_DispMode {
 	_TCHAR *name;

@@ -20,6 +20,10 @@ along with Final Fantasy VII Launcher.  If not, see <http://www.gnu.org/licenses
 
 #include "HOOKS_BASE.h"
 
+HWND g_hwnd = NULL;
+LPDIRECTDRAWSURFACE4 g_frontbuffer = NULL;
+LPDIRECTDRAWSURFACE4 g_backbuffer = NULL;
+
 BOOL g_binkActive = FALSE;
 LPDIRECTDRAWSURFACE4 g_decoyBackBuffer;
 DWORD g_decoyBackLockFlags;
