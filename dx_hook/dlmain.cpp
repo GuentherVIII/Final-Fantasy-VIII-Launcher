@@ -134,7 +134,6 @@ BOOL APIENTRY DllMain(HINSTANCE hModule,  DWORD  ul_reason_for_call, LPVOID lpRe
 		memset(&g_config, 0, sizeof(g_config));
 		LoadConfig(g_config);
 
-		{ //LG
 		g_game.modX = displaymode_options[g_config.displaymode].resX / 640.0f;
 		if(g_config.eliminate_black_bars) {
 			// Worldmap, FMV, "normal" scenes have 16px black borders at top and bottom
@@ -143,38 +142,28 @@ BOOL APIENTRY DllMain(HINSTANCE hModule,  DWORD  ul_reason_for_call, LPVOID lpRe
 		} else {
 			g_game.modY = displaymode_options[g_config.displaymode].resY / 480.0f;
 		}
-		float width = (float)displaymode_options[g_config.displaymode].resX;
-		float height = (float)displaymode_options[g_config.displaymode].resY;
 
 		//Stretch 4:3 Aspect Ratio only applies to non-4:3 aspect ratios
 		if(g_game.modX-g_game.modY <= 0.0001 && g_game.modX-g_game.modY >= -0.0001) { //float inprecision
 			g_config.stretch_4_3_ar = 0;
 		}
 
-		if(g_config.stretch_4_3_ar == 0) {
+		if(!g_config.stretch_4_3_ar) {
 			if(g_game.modX > g_game.modY) {
 				//4:3, 16:10, 16:9 etc.
 				g_game.modX = g_game.modY;
-				width = 640.0f*g_game.modY;
-				if((UINT)(floor(width))%2==1) g_game.width = (DWORD)ceil(width);
-				else g_game.width = (DWORD)floor(width);
-				//g_game.height = (DWORD)height;
-				g_game.height = (DWORD)(480.0f * g_game.modY);
 			} else {
 				//1:1, 1:2 etc. (not really used but it can never hurt...)
 				g_game.modY = g_game.modX;
-				//g_game.width = (DWORD)width;
-				g_game.width = (DWORD)(640.0f * g_game.modX);
-				height = 480.0f*g_game.modX;
-				if((UINT)(floor(height))%2==1) g_game.height = (DWORD)ceil(height);
-				else g_game.height = (DWORD)floor(height);
 			}
-		} else {
-			//g_game.width = (DWORD)width;
-			g_game.width = (DWORD)(640.0f * g_game.modX);
-			//g_game.height = (DWORD)height;
-			g_game.height = (DWORD)(480.0f * g_game.modY);
 		}
+		{
+			float width = 640.0f*g_game.modX;
+			if((UINT)(floor(width))%2==1) g_game.width = (DWORD)ceil(width);
+			else g_game.width = (DWORD)floor(width);
+			float height = 480.0f*g_game.modY;
+			if((UINT)(floor(height))%2==1) g_game.height = (DWORD)ceil(height);
+			else g_game.height = (DWORD)floor(height);
 		}
 
 		Log("DLL injected into FF8.exe\n");
