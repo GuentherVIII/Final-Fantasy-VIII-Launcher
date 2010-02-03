@@ -89,6 +89,9 @@ int LoadConfig(FF8Config &cfg) {
 				//Stretch 4:3 Aspect Ratio
 				} else if(_tcscmp(_T("stretch_4:3_ar"), buffer) == 0) {
 					cfg.stretch_4_3_ar = parseInt(val);
+				//Eliminate black bars
+				} else if(_tcscmp(_T("eliminate_black_bars"), buffer) == 0) {
+					cfg.eliminate_black_bars = parseInt(val);
 				//expert mode
 				} else if(_tcscmp(_T("expert_mode"), buffer) == 0) {
 					cfg.expert_mode = parseInt(val);
@@ -117,6 +120,7 @@ int SaveConfig(FF8Config &cfg) {
 		ofs << "force_texture_filtering=" << cfg.force_texture_filtering << "\n";
 		ofs << "force_alpha_transparency=" << cfg.force_alpha_transparency << "\n";
 		ofs << "stretch_4:3_ar=" << cfg.stretch_4_3_ar << "\n";
+		ofs << "eliminate_black_bars=" << cfg.eliminate_black_bars << "\n";
 		ofs << "expert_mode=" << cfg.expert_mode << "\n";
 		ofs << "expert_tex_uvmap_adj_backgrounds=" << cfg.tex_uvmap_adj_backgrounds << "\n";
 		ofs << "expert_tex_uvmap_adj_interface=" << cfg.tex_uvmap_adj_interface << "\n";

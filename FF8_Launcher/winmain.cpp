@@ -147,20 +147,23 @@ LRESULT CALLBACK InterfaceProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lP
 		}
 		ComboBox_SetCurSel(hwndFSAA, g_config.fsaa);
 
-		HWND hwnd8bitPFix = GetDlgItem(g_hwndInterface, IDC_8BITPFIX);
-		Button_SetCheck(hwnd8bitPFix, (g_config.b8_paletted_textures_fix ? BST_CHECKED : BST_UNCHECKED));
+		Button_SetCheck(GetDlgItem(g_hwndInterface, IDC_8BITPFIX),
+			(g_config.b8_paletted_textures_fix ? BST_CHECKED : BST_UNCHECKED));
 
-		HWND hwndStretch43Ar = GetDlgItem(g_hwndInterface, IDC_STRETCH43AR);
-		Button_SetCheck(hwndStretch43Ar, (g_config.stretch_4_3_ar ? BST_CHECKED : BST_UNCHECKED));
+		Button_SetCheck(GetDlgItem(g_hwndInterface, IDC_KEEP43AR),
+			(!g_config.stretch_4_3_ar ? BST_CHECKED : BST_UNCHECKED));
 
-		HWND hwndLinearFilter = GetDlgItem(g_hwndInterface, IDC_LFILTER);
-		Button_SetCheck(hwndLinearFilter, (g_config.force_texture_filtering ? BST_CHECKED : BST_UNCHECKED));
+		Button_SetCheck(GetDlgItem(g_hwndInterface, IDC_BLACKBARS),
+			(g_config.eliminate_black_bars ? BST_CHECKED : BST_UNCHECKED));
 
-		HWND hwndAlphaTransparency = GetDlgItem(g_hwndInterface, IDC_ALPHA);
-		Button_SetCheck(hwndAlphaTransparency, (g_config.force_alpha_transparency ? BST_CHECKED : BST_UNCHECKED));
+		Button_SetCheck(GetDlgItem(g_hwndInterface, IDC_LFILTER),
+			(g_config.force_texture_filtering ? BST_CHECKED : BST_UNCHECKED));
 
-		HWND hwndExpertMode = GetDlgItem(g_hwndInterface, IDC_EXPERTMODE);
-		Button_SetCheck(hwndExpertMode, (g_config.expert_mode ? BST_CHECKED : BST_UNCHECKED));
+		Button_SetCheck(GetDlgItem(g_hwndInterface, IDC_ALPHA),
+			(g_config.force_alpha_transparency ? BST_CHECKED : BST_UNCHECKED));
+
+		Button_SetCheck(GetDlgItem(g_hwndInterface, IDC_EXPERTMODE),
+			(g_config.expert_mode ? BST_CHECKED : BST_UNCHECKED));
 		
 		return true;
 		}
@@ -174,43 +177,41 @@ LRESULT CALLBACK InterfaceProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lP
 		case IDC_DDDISPLAYMODE:
 			g_config.displaymode = ComboBox_GetCurSel(GetDlgItem(g_hwndInterface, IDC_DDDISPLAYMODE));
 			SaveConfig(g_config);
-			
 			return TRUE;
 
 		case IDC_DDFSAA:
 			g_config.fsaa = ComboBox_GetCurSel(GetDlgItem(g_hwndInterface, IDC_DDFSAA));
 			SaveConfig(g_config);
-			
 			return TRUE;
 
 		case IDC_8BITPFIX:
 			g_config.b8_paletted_textures_fix = Button_GetCheck(GetDlgItem(g_hwndInterface, IDC_8BITPFIX)) == BST_CHECKED;
 			SaveConfig(g_config);
-			
 			return TRUE;
 
-		case IDC_STRETCH43AR:
-			g_config.stretch_4_3_ar = Button_GetCheck(GetDlgItem(g_hwndInterface, IDC_STRETCH43AR)) == BST_CHECKED;
+		case IDC_KEEP43AR:
+			g_config.stretch_4_3_ar = Button_GetCheck(GetDlgItem(g_hwndInterface, IDC_KEEP43AR)) != BST_CHECKED;
 			SaveConfig(g_config);
-			
+			return TRUE;
+
+		case IDC_BLACKBARS:
+			g_config.eliminate_black_bars = Button_GetCheck(GetDlgItem(g_hwndInterface, IDC_BLACKBARS)) == BST_CHECKED;
+			SaveConfig(g_config);
 			return TRUE;
 
 		case IDC_LFILTER:
 			g_config.force_texture_filtering = Button_GetCheck(GetDlgItem(g_hwndInterface, IDC_LFILTER)) == BST_CHECKED;
 			SaveConfig(g_config);
-			
 			return TRUE;
 
 		case IDC_ALPHA:
 			g_config.force_alpha_transparency = Button_GetCheck(GetDlgItem(g_hwndInterface, IDC_ALPHA)) == BST_CHECKED;
 			SaveConfig(g_config);
-			
 			return TRUE;
 
 		case IDC_EXPERTMODE:
 			g_config.expert_mode = Button_GetCheck(GetDlgItem(g_hwndInterface, IDC_EXPERTMODE)) == BST_CHECKED;
 			SaveConfig(g_config);
-			
 			return TRUE;
 		}
 

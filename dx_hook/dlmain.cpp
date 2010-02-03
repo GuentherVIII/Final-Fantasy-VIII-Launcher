@@ -136,8 +136,13 @@ BOOL APIENTRY DllMain(HINSTANCE hModule,  DWORD  ul_reason_for_call, LPVOID lpRe
 
 		{ //LG
 		g_game.modX = displaymode_options[g_config.displaymode].resX / 640.0f;
-		g_game.modY = displaymode_options[g_config.displaymode].resY / 480.0f;
-		//g_game.modY = displaymode_options[g_config.displaymode].resY / (480.0f - 32.0f);
+		if(g_config.eliminate_black_bars) {
+			// Worldmap, FMV, "normal" scenes have 16px black borders at top and bottom
+			// Fight scenes have more, but not changing the scale factor is simpler
+			g_game.modY = displaymode_options[g_config.displaymode].resY / (480.0f - 32.0f);
+		} else {
+			g_game.modY = displaymode_options[g_config.displaymode].resY / 480.0f;
+		}
 		float width = (float)displaymode_options[g_config.displaymode].resX;
 		float height = (float)displaymode_options[g_config.displaymode].resY;
 

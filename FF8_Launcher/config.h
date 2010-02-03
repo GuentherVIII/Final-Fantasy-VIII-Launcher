@@ -40,6 +40,7 @@ struct FF8Config {
 	float tex_uvmap_adj_backgrounds;
 	float tex_uvmap_adj_interface;
 	UINT stretch_4_3_ar;
+	UINT eliminate_black_bars;
 };
 
 //not used (delete?)

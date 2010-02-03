@@ -518,19 +518,21 @@ HRESULT __stdcall D3DDEVICE3_HOOK_DrawIndexedPrimitive(LPVOID *ppvOut, D3DPRIMIT
 
 		if(dwVertexCount >= 1) {
 			float adjX = 0, adjY = 0;
-			if(g_config.stretch_4_3_ar == 0) { 
-				adjX = adjY = (g_config.expert_mode >= 1 ? g_config.tex_uvmap_adj_backgrounds : 0.0005f);
+			if(vert[0].rhw != 1.0f) {
+				if(g_config.stretch_4_3_ar) {
+					adjX = (g_config.expert_mode >= 1 ? g_config.tex_uvmap_adj_backgrounds : 0.0005f)*(g_game.modX > g_game.modY ? 1+g_game.modX-g_game.modY : 1);
+					adjY = (g_config.expert_mode >= 1 ? g_config.tex_uvmap_adj_backgrounds : 0.0005f)*(g_game.modX < g_game.modY ? 1+g_game.modY-g_game.modX : 1);
+				} else {
+					adjX = adjY = (g_config.expert_mode >= 1 ? g_config.tex_uvmap_adj_backgrounds : 0.0005f);
+				}
 			} else {
-				adjX = (g_config.expert_mode >= 1 ? g_config.tex_uvmap_adj_backgrounds : 0.0005f)*(g_game.modX > g_game.modY ? 1+g_game.modX-g_game.modY : 1);
-				adjY = (g_config.expert_mode >= 1 ? g_config.tex_uvmap_adj_backgrounds : 0.0005f)*(g_game.modX < g_game.modY ? 1+g_game.modY-g_game.modX : 1);
-			}
-
-			// Interface blits have rhw==0, and profit from a different amount of adjustment
-			if(g_config.stretch_4_3_ar == 0 && vert[0].rhw == 1.0f) { 
-				adjX = adjY = (g_config.expert_mode >= 1 ? g_config.tex_uvmap_adj_interface : 0.0005f);
-			} else if (vert[0].rhw == 1.0f){
-				adjX = (g_config.expert_mode >= 1 ? g_config.tex_uvmap_adj_interface : 0.0005f)*(g_game.modX > g_game.modY ? 1+g_game.modX-g_game.modY : 1);
-				adjY = (g_config.expert_mode >= 1 ? g_config.tex_uvmap_adj_interface : 0.0005f)*(g_game.modX < g_game.modY ? 1+g_game.modY-g_game.modX : 1);
+				// Interface blits have rhw==0, and profit from a different amount of adjustment
+				if(g_config.stretch_4_3_ar) { 
+					adjX = (g_config.expert_mode >= 1 ? g_config.tex_uvmap_adj_interface : 0.0005f)*(g_game.modX > g_game.modY ? 1+g_game.modX-g_game.modY : 1);
+					adjY = (g_config.expert_mode >= 1 ? g_config.tex_uvmap_adj_interface : 0.0005f)*(g_game.modX < g_game.modY ? 1+g_game.modY-g_game.modX : 1);
+				} else {
+					adjX = adjY = (g_config.expert_mode >= 1 ? g_config.tex_uvmap_adj_interface : 0.0005f);
+				}
 			}
 
 			// FF8 blits backgrounds, fonts, the squaresoft logo, etc. by blitting rects.

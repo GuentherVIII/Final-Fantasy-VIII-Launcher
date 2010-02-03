@@ -13,11 +13,10 @@
 #define IDC_BTPLAY                      1006
 #define IDC_LFILTER                     1007
 #define IDC_8BITPFIX                    1008
-#define IDOK_ABOUT                      1009
-#define IDC_STRETCH43AR                 1009
-#define IDC_EXPERTMODE2                 1010
+#define IDC_KEEP43AR                    1009
 #define IDC_EXPERTMODE                  1010
 #define IDC_ABOUTTEXT                   1011
+#define IDC_BLACKBARS                   1012
 #define ID_FILE_EXIT                    40001
 #define ID_HELP_ABOUT                   40002
 #define ID_FILE_PLAYFF8                 40003
@@ -28,7 +27,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        113
 #define _APS_NEXT_COMMAND_VALUE         40004
-#define _APS_NEXT_CONTROL_VALUE         1012
+#define _APS_NEXT_CONTROL_VALUE         1013
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
