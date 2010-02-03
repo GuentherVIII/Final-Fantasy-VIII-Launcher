@@ -133,7 +133,7 @@ BOOL APIENTRY DllMain(HINSTANCE hModule,  DWORD  ul_reason_for_call, LPVOID lpRe
 
 		memset(&g_config, 0, sizeof(g_config));
 		LoadConfig(g_config);
-
+		//displaymode_options[g_config.displaymode].bpp = 32;
 		g_game.modX = displaymode_options[g_config.displaymode].resX / 640.0f;
 		if(g_config.eliminate_black_bars) {
 			// Worldmap, FMV, "normal" scenes have 16px black borders at top and bottom

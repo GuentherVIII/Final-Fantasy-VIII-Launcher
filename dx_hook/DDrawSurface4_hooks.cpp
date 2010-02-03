@@ -94,7 +94,7 @@ SVTBL_HOOK ddrawsurface4_hooks[] = {
 /*19*/	{ NULL, 0, NULL, NULL },	//{ "GetOverlayPosition",		0x4C, NULL, (PDWORD)DDRAWSURFACE4_HOOK_GetOverlayPosition },
 /*20*/	{ NULL, 0, NULL, NULL },	//{ "GetPalette",				0x50, NULL, (PDWORD)DDRAWSURFACE4_HOOK_GetPalette },
 /*21*/	{ NULL, 0, NULL, NULL },	//{ "GetPixelFormat",			0x54, NULL, (PDWORD)DDRAWSURFACE4_HOOK_GetPixelFormat },
-/*22*/	{ NULL, 0, NULL, NULL },	//{ "GetSurfaceDesc",			0x58, NULL, (PDWORD)DDRAWSURFACE4_HOOK_GetSurfaceDesc },
+/*22*/	{ "GetSurfaceDesc",			0x58, NULL, (PDWORD)DDRAWSURFACE4_HOOK_GetSurfaceDesc },
 /*23*/	{ NULL, 0, NULL, NULL },	//{ "Initialize",				0x5C, NULL, (PDWORD)DDRAWSURFACE4_HOOK_Initialize },
 /*24*/	{ NULL, 0, NULL, NULL },	//{ "IsLost",					0x60, NULL, (PDWORD)DDRAWSURFACE4_HOOK_IsLost },
 /*25*/	{ "Lock",					0x64, NULL, (PDWORD)DDRAWSURFACE4_HOOK_Lock },
@@ -456,6 +456,37 @@ HRESULT __stdcall DDRAWSURFACE4_HOOK_GetSurfaceDesc(LPVOID *ppvOut, LPDDSURFACED
 	HRESULT ret = ofn(ppvOut, lpDDSurfaceDesc);
 	LogDXError(ret);
 
+	DDSURFACEDESC2 & sd = *lpDDSurfaceDesc;
+	if((!g_config.fullscreen && (LPDIRECTDRAWSURFACE4)ppvOut == g_backbuffer) ||
+	  (sd.dwWidth == displaymode_options[g_config.displaymode].resX &&
+	   sd.dwHeight == displaymode_options[g_config.displaymode].resY &&
+	   (sd.ddsCaps.dwCaps & DDSCAPS_BACKBUFFER))) {
+		sd.ddpfPixelFormat.dwFlags = DDPF_RGB;
+		sd.ddpfPixelFormat.dwFourCC = 0;
+		sd.ddpfPixelFormat.dwRGBBitCount = 16;
+		sd.ddpfPixelFormat.dwRBitMask = 0xf800;
+		sd.ddpfPixelFormat.dwGBitMask = 0x07e0;
+		sd.ddpfPixelFormat.dwBBitMask = 0x001f;
+		sd.dwWidth = 640;
+		sd.dwHeight = 480;
+		Log("Backbuffer info adjustment\n");
+	}
+	// Similarily, the frontbuffer is read for special effects which also depend on the fixed size.
+	if((!g_config.fullscreen && (LPDIRECTDRAWSURFACE4)ppvOut == g_frontbuffer) ||
+	  (sd.dwWidth == displaymode_options[g_config.displaymode].resX &&
+	   sd.dwHeight == displaymode_options[g_config.displaymode].resY &&
+	   (sd.ddsCaps.dwCaps & DDSCAPS_PRIMARYSURFACE))) {
+		sd.ddpfPixelFormat.dwFlags = DDPF_RGB;
+		sd.ddpfPixelFormat.dwFourCC = 0;
+		sd.ddpfPixelFormat.dwRGBBitCount = 16;
+		sd.ddpfPixelFormat.dwRBitMask = 0xf800;
+		sd.ddpfPixelFormat.dwGBitMask = 0x07e0;
+		sd.ddpfPixelFormat.dwBBitMask = 0x001f;
+		sd.dwWidth = 640;
+		sd.dwHeight = 480;
+		Log("Frontbuffer info adjustment\n");
+	}
+
 	Log("IDirectDrawSurface4::%s(this=%#010lx, lpDDSurfaceDesc=%#010lx)\n", ddrawsurface4_hooks[hpos].name, ppvOut, lpDDSurfaceDesc);
 	if(lpDDSurfaceDesc != NULL) {
 		char dwFlags_buffer[LOGBUFFER_MAX], ddscaps1_buffer[LOGBUFFER_MAX], ddpf_buffer[LOGBUFFER_MAX];
@@ -537,8 +568,8 @@ HRESULT __stdcall DDRAWSURFACE4_HOOK_Lock(LPVOID *ppvOut, LPRECT lpDestRect, LPD
 		// scale it up in the UnLock function.
 		// Luckily, this appears to be only used for videos, where simple upscaling is the only option anyway.
 		if((!g_config.fullscreen && (LPDIRECTDRAWSURFACE4)ppvOut == g_backbuffer) ||
-		  (sd.dwWidth == displaymode_options[g_config.displaymode].resX &&
-		   sd.dwHeight == displaymode_options[g_config.displaymode].resY &&
+		  (sd.dwWidth == 640 &&
+		   sd.dwHeight == 480 &&
 		   (sd.ddsCaps.dwCaps & DDSCAPS_BACKBUFFER))) {
 			ppDecoySurface = &g_decoyBackBuffer;
 			g_decoyBackLockFlags = dwFlags;
@@ -546,8 +577,8 @@ HRESULT __stdcall DDRAWSURFACE4_HOOK_Lock(LPVOID *ppvOut, LPRECT lpDestRect, LPD
 		}
 		// Similarily, the frontbuffer is read for special effects which also depend on the fixed size.
 		if((!g_config.fullscreen && (LPDIRECTDRAWSURFACE4)ppvOut == g_frontbuffer) ||
-		  (sd.dwWidth == displaymode_options[g_config.displaymode].resX &&
-		   sd.dwHeight == displaymode_options[g_config.displaymode].resY &&
+		  (sd.dwWidth == 640 &&
+		   sd.dwHeight == 480 &&
 		   (sd.ddsCaps.dwCaps & DDSCAPS_PRIMARYSURFACE))) {
 			ppDecoySurface = &g_decoyFrontBuffer;
 			g_decoyFrontLockFlags = dwFlags;
@@ -577,6 +608,8 @@ HRESULT __stdcall DDRAWSURFACE4_HOOK_Lock(LPVOID *ppvOut, LPRECT lpDestRect, LPD
 			if((*ppDecoySurface)->IsLost())
 				(*ppDecoySurface)->Restore();
 			RECT rcDest, rcSource;
+			sd.dwHeight = displaymode_options[g_config.displaymode].resY;
+			sd.dwWidth = displaymode_options[g_config.displaymode].resX;
 			// FIXME: In windowed mode, the front buffer probably contains the whole screen or something
 			if(sd.dwHeight >= g_game.height) {
 				rcSource.top = (sd.dwHeight - g_game.height)/2; rcSource.bottom = sd.dwHeight - rcSource.top;
@@ -724,16 +757,16 @@ HRESULT __stdcall DDRAWSURFACE4_HOOK_Unlock(LPVOID *ppvOut, LPRECT lpRect) {
 		DWORD dwLockFlags = 0;
 
 		if((!g_config.fullscreen && (LPDIRECTDRAWSURFACE4)ppvOut == g_backbuffer) ||
-		  (sd.dwWidth == displaymode_options[g_config.displaymode].resX &&
-		   sd.dwHeight == displaymode_options[g_config.displaymode].resY &&
+		  (sd.dwWidth == 640 &&
+		   sd.dwHeight == 480 &&
 		   (sd.ddsCaps.dwCaps & DDSCAPS_BACKBUFFER))) {
 			ppDecoySurface = &g_decoyBackBuffer;
 			dwLockFlags = g_decoyBackLockFlags;
 			Log("Backbuffer unlocking: Rescaling surface... (hopefully with a Bink video)\n");
 		}
 		if((!g_config.fullscreen && (LPDIRECTDRAWSURFACE4)ppvOut == g_frontbuffer) ||
-		  (sd.dwWidth == displaymode_options[g_config.displaymode].resX &&
-		   sd.dwHeight == displaymode_options[g_config.displaymode].resY &&
+		  (sd.dwWidth == 640 &&
+		   sd.dwHeight == 480 &&
 		   (sd.ddsCaps.dwCaps & DDSCAPS_PRIMARYSURFACE))) {
 			ppDecoySurface = &g_decoyFrontBuffer;
 			dwLockFlags = g_decoyFrontLockFlags;
@@ -741,6 +774,8 @@ HRESULT __stdcall DDRAWSURFACE4_HOOK_Unlock(LPVOID *ppvOut, LPRECT lpRect) {
 		}
 		if(ppDecoySurface) {
 			RECT rcDest, rcSource;
+			sd.dwHeight = displaymode_options[g_config.displaymode].resY;
+			sd.dwWidth = displaymode_options[g_config.displaymode].resX;
 			if(sd.dwHeight >= g_game.height) {
 				rcSource.top = 0; rcSource.bottom = 480;
 				rcDest.top = (sd.dwHeight - g_game.height) / 2; rcDest.bottom = sd.dwHeight - rcDest.top;
