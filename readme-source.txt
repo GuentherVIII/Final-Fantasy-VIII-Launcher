@@ -1,5 +1,6 @@
 Final Fantasy VIII Launcher
 Copyright 2007, 2008 Tobias Sebring
+Copyright 2010 Günther <guenther.emu@freenet.de>
 
 
 Final Fantasy VII Launcher is free software: you can redistribute it and/or modify

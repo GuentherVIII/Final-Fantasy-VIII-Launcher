@@ -1,6 +1,7 @@
 
-FINAL FANTASY VIII LAUNCHER v1.31
+FINAL FANTASY VIII LAUNCHER v1.4
 Copyright (c) 2007 Tobias Sebring (aka Magix)
+Copyright 2010 Günther <guenther.emu@freenet.de>
 
 
 
@@ -9,6 +10,8 @@ FEATURES
 - 8-bit Paletted Textures Fix for NVIDIA GeForce 6xxx+ graphics cards
 - Custom Resolutions (including FSAA / Anisotropic Filtering Fix)
 - Windows XP/Vista x86 Compatibility
+- Window mode
+- Extra bilinear filtering for some textures
 
 
 
@@ -74,6 +77,21 @@ textures in menus (character menu, main menu etc.)
 
 VERSION HISTORY
 -----------------------------------------------------------------------------------------------------
+[ Version 1.4 ]
+- New maintainer (Günther). Thanks to Magix for all the work!
+- Instead of hooking blink video calls, every lock of backbuffer and frontbuffer scales the original
+  down to 640x480 and hands the result to the game. This fixes end-of-video and slight battle transition
+  glitches.
+- lines are drawn thicker in higher resolutions.
+- The 0.5 px offset of DirectX is compensated for - the game developers instead relied on nearest point
+  sampling to cover the shift up. This fixes thin line glitches on high resolutions with scrolling
+  backgrounds in some areas.
+- New option to slightly zoom in to eliminate the black bars at the top and bottom
+- New option to apply bilinear filtering to some textures
+- Made the window mode work and available as a runtime option
+- Made the UV coordinate compensation work for more blits
+
+
 [ Version 1.31 ]
 - New option "Stretch 4:3 Aspect Ratio" stretches the picture to the full screen width and height
   without maintaining original 4:3 picture aspect ratio. OPTION ONLY APPLIES TO NON-4:3 RESOLUTIONS.
@@ -119,7 +137,6 @@ graphics cards.
 
 KNOWN BUGS
 -----------------------------------------------------------------------------------------------------
-- Bink-videos that fade to black after the last frame are not scaled during the fade phase
 - Textures on 3D objects that are mapped on four entirely flat (same z-coord) vertices flicker
 
 
@@ -149,7 +166,7 @@ NVIDIA GeForce 6600GT, Windows XP
 NVIDIA GeForce 6200, Windows XP SP2
 ATI x800XT
 NVIDIA Quadro FX Go1400
-
+AMD 4670, Windows XP SP3
 
 
 HELP/INPUT

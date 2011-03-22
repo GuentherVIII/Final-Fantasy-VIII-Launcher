@@ -20,7 +20,7 @@ along with Final Fantasy VII Launcher.  If not, see <http://www.gnu.org/licenses
 
 #include "winmain.h"
 
-_TCHAR g_szAppTitle[] = _T("Final Fantasy VIII Launcher v1.3");
+_TCHAR g_szAppTitle[] = _T("Final Fantasy VIII Launcher v1.4");
 _TCHAR g_szClassName[] = _T("FF8Launcher");
 HINSTANCE g_hInst = NULL;
 HWND g_hwndMain = NULL, g_hwndInterface = NULL;

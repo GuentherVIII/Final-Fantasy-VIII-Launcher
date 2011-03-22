@@ -1,6 +1,7 @@
 /*
 Final Fantasy VIII Launcher
 Copyright 2007, 2008 Tobias Sebring
+Copyright 2010 Günther <guenther.emu@freenet.de>
 
 
 This file is part of Final Fantasy VII Launcher.
@@ -20,7 +21,7 @@ along with Final Fantasy VII Launcher.  If not, see <http://www.gnu.org/licenses
 
 #include "winmain.h"
 
-_TCHAR g_szAppTitle[] = _T("Final Fantasy VIII Launcher v1.31");
+_TCHAR g_szAppTitle[] = _T("Final Fantasy VIII Launcher v1.4");
 _TCHAR g_szClassName[] = _T("FF8Launcher");
 HINSTANCE g_hInst = NULL;
 HWND g_hwndMain = NULL, g_hwndInterface = NULL;
