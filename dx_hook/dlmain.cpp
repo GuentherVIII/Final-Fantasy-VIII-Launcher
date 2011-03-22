@@ -86,11 +86,16 @@ void __stdcall MyBinkClose(void *BinkStruct) {
 
 /* mostly guesses */
 int __stdcall MyBinkCopyToBuffer(void *BinkStruct, void *surface, int pitch, int height, int a, int b, int c) {
-
+	// Apparently, FF8 gets the screen depth from somewhere else than DDraw, and passes that
+	// to Bink. However, Bink gets the decoy backbuffer surface, which is 16 bpp. Setting the last
+	// parameter to the value it has with real 16 bpp fixes the video display.
+	int c0 = c;
+	if (c == 0x08000002)
+		c = 0x08000004;
 	BinkCopyToBuffer_Type OldFn = (BinkCopyToBuffer_Type)DLLHooks[2]->Functions[2].OrigFn;
 	int r = OldFn(BinkStruct, surface, pitch, height, a, b, c);
 
-	Log("_EXPORT::BinkCopyToBuffer(%#010lx, %#010lx, %#010lx, %#010lx, %#010lx, %#010lx, %#010lx)=%p\n", BinkStruct, surface, pitch, height, a, b, c, r);
+	Log("_EXPORT::BinkCopyToBuffer(%#010lx, %#010lx, %#010lx, %#010lx, %#010lx, %#010lx, %#010lx)=%p\n", BinkStruct, surface, pitch, height, a, b, c0, r);
 
 	return r;
 }
@@ -134,7 +139,6 @@ BOOL APIENTRY DllMain(HINSTANCE hModule,  DWORD  ul_reason_for_call, LPVOID lpRe
 
 		memset(&g_config, 0, sizeof(g_config));
 		LoadConfig(g_config);
-		//displaymode_options[g_config.displaymode].bpp = 32;
 		g_game.modX = displaymode_options[g_config.displaymode].resX / 640.0f;
 		if(g_config.eliminate_black_bars) {
 			// Worldmap, FMV, "normal" scenes have 16px black borders at top and bottom
